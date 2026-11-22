@@ -106,12 +106,13 @@
 
         .logo { text-align: center; margin-bottom: 20px; }
         .logo img {
-            height: 85px;
+            height: 95px;
             filter: drop-shadow(0 0 12px rgba(var(--sed-accent-rgb), .6));
             transition: filter .3s;
         }
         .logo img:hover { filter: drop-shadow(0 0 20px rgba(var(--sed-accent-rgb), .9)); }
 
+        /* Les style */
         .title {
             text-align: center;
             font-size: 24px;
