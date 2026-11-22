@@ -2,48 +2,31 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\DocumentDestinataire;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Document extends Model
 {
-    use HasFactory;
-
-    public $timestamps = false;
+    use HasUuids;
 
     protected $fillable = [
-        'categorie_id',
-        'titre',
-        'description',
-        'type',
-        'fichier_url',
-        'format_fichier',
-        'taille_fichier_ko',
-        'acces',
-        'telechargeable',
-        'code_consultation',
-        'version',
-        'nombre_telechargements',
-        'publie_le',
-        'publie_par',
+        'expediteur_id', 'niveau', 'chemin', 'taille',
+        'header', 'meta_nonce', 'meta_chiffree', 'hash', 'signature',
     ];
 
-    protected $casts = [
-        'publie_le' => 'datetime',
-        'taille_fichier_ko' => 'integer',
-        'nombre_telechargements' => 'integer',
-        'telechargeable' => 'boolean',
-        'publie_par' => 'string', // UUID
-    ];
+    /** Le chemin du fichier sur le serveur ne sort jamais dans le JSON. */
+    protected $hidden = ['chemin'];
 
-    public function categorie(): BelongsTo
+    public function expediteur(): BelongsTo
     {
-        return $this->belongsTo(CategorieDocument::class, 'categorie_id');
+        return $this->belongsTo(Agent::class, 'expediteur_id');
     }
 
-    public function publiePar(): BelongsTo
+    public function destinataires(): HasMany
     {
-        return $this->belongsTo(User::class, 'publie_par');
+        return $this->hasMany(DocumentDestinataire::class);
     }
 }

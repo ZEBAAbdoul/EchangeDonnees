@@ -11,7 +11,85 @@
     $inscriptionsEnCours = $inscriptionsEnCours ?? collect();
 @endphp
 
-<nav class="main-header navbar navbar-expand navbar-white navbar-light">
+{{-- Styles de la barre du haut (thème sombre SED), chargés une seule fois --}}
+@once
+    <style>
+        .main-header.navbar {
+            background: rgba(10, 25, 47, .92) !important;
+            border-bottom: 1px solid rgba(0, 212, 255, .25) !important;
+            backdrop-filter: blur(10px);
+        }
+
+        .main-header .navbar-nav .nav-link {
+            color: rgba(230, 241, 255, .85);
+            transition: color .2s;
+        }
+
+        .main-header .navbar-nav .nav-link:hover,
+        .main-header .navbar-nav .show > .nav-link { color: #00d4ff; }
+
+        .main-header .navbar-badge {
+            font-size: .62rem;
+            font-weight: 700;
+            box-shadow: 0 0 0 2px #0a192f;
+        }
+
+        /* Avatar avec liseré cyan */
+        .main-header .user-menu .img-circle {
+            border: 2px solid rgba(0, 212, 255, .55);
+            box-shadow: 0 0 10px rgba(0, 212, 255, .3);
+            transition: box-shadow .25s, border-color .25s;
+        }
+
+        .main-header .user-menu .nav-link:hover .img-circle {
+            border-color: #00d4ff;
+            box-shadow: 0 0 16px rgba(0, 212, 255, .55);
+        }
+
+        /* Menus déroulants en verre sombre */
+        .main-header .dropdown-menu {
+            background: rgba(10, 25, 47, .97);
+            border: 1px solid rgba(0, 212, 255, .3);
+            border-radius: 12px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, .5), 0 0 30px rgba(0, 212, 255, .08);
+            padding: 6px;
+        }
+
+        .main-header .dropdown-menu .dropdown-item {
+            color: #cfe3ff;
+            border-radius: 8px;
+            transition: background .2s, color .2s;
+        }
+
+        .main-header .dropdown-menu .dropdown-item:hover,
+        .main-header .dropdown-menu .dropdown-item:focus {
+            background: rgba(0, 212, 255, .12);
+            color: #fff;
+        }
+
+        .main-header .dropdown-menu .dropdown-item.active {
+            background: linear-gradient(135deg, #00d4ff, #007bff);
+            color: #fff;
+        }
+
+        .main-header .dropdown-menu .dropdown-item.text-danger { color: #f87171 !important; }
+        .main-header .dropdown-menu .dropdown-item.text-danger:hover { background: rgba(220, 38, 38, .15); color: #fecaca !important; }
+
+        .main-header .dropdown-menu .dropdown-header { color: #7a9cc0; font-size: .8rem; letter-spacing: .04em; }
+        .main-header .dropdown-menu .dropdown-footer { color: #00d4ff; text-align: center; }
+        .main-header .dropdown-menu .dropdown-divider { border-top-color: rgba(0, 212, 255, .15); }
+        .main-header .dropdown-menu .text-muted { color: #7a9cc0 !important; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .main-header .navbar-nav .nav-link,
+            .main-header .user-menu .img-circle,
+            .main-header .dropdown-menu .dropdown-item { transition: none; }
+        }
+    </style>
+@endonce
+
+<nav class="main-header navbar navbar-expand navbar-dark">
     <!-- Liens de gauche -->
     <ul class="navbar-nav">
         <li class="nav-item">

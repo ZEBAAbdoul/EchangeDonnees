@@ -199,11 +199,11 @@
                                         {{ $type->libelle }}
                                     </span>
 
-                                    @if ($type->obligatoire)
+                                    {{-- @if ($type->obligatoire)
                                         <span class="badge badge-danger">Obligatoire</span>
                                     @else
                                         <span class="badge badge-secondary">Facultatif</span>
-                                    @endif
+                                    @endif --}}
                                 </div>
 
                                 <div class="custom-file">

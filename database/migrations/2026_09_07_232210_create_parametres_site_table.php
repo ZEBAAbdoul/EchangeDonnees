@@ -22,7 +22,7 @@ return new class extends Migration
             $table->string('mot_dg_photo_url', 255)->nullable();
             $table->string('mot_dg_nom', 150)->nullable();
             $table->string('adresse', 255)->nullable();
-            $table->string('telephone', 30)->nullable();
+            $table->string('telephone', 50)->nullable();
             $table->string('email_contact', 150)->nullable();
             $table->unsignedSmallInteger('annee_creation')->nullable();
             $table->unsignedInteger('personne_forme')->nullable();

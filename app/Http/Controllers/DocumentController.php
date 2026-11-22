@@ -2,228 +2,130 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use App\Models\CategorieDocument;
+use App\Http\Controllers\Concerns\EnregistreDestinataires;
+use App\Http\Controllers\Concerns\ResoutAgentCourant;
+use App\Models\Agent;
+use App\Models\Destinataire;
 use App\Models\Document;
+use App\Services\AuditService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\View\View;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Str;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DocumentController extends Controller
 {
-    private array $typeOptions = [
-        'rapport' => 'Rapport',
-        'brochure' => 'Brochure',
-        'texte_reglementaire' => 'Texte réglementaire',
-        'support_pedagogique' => 'Support pédagogique',
-        'livre' => 'Livre',
-        'ouvrage' => 'Ouvrage',
-    ];
+    use ResoutAgentCourant, EnregistreDestinataires;
 
-    private array $accesOptions = [
-        'public' => 'Public',
-        'restreint' => 'Restreint',
-    ];
-
-    public function index(Request $request): View
-{
-    $categories = CategorieDocument::orderBy('nom')->get();
-
-    $query = Document::with(['categorie', 'publiePar'])
-        ->when($request->filled('categorie_id'), fn($q) => $q->where('categorie_id', $request->categorie_id))
-        ->when($request->filled('type'), fn($q) => $q->where('type', $request->type))
-        ->when($request->filled('acces'), fn($q) => $q->where('acces', $request->acces))
-        ->when($request->filled('telechargeable'), fn($q) => $q->where('telechargeable', $request->boolean('telechargeable')))
-        ->orderByDesc('publie_le');
-
-    // Pagination : 10, 25, 50, 100 ou "tous"
-    $perPage = $request->input('per_page', 15);
-
-    if ($perPage === 'tous') {
-        $total = (clone $query)->count();
-        $documents = $query->paginate($total > 0 ? $total : 1);
-    } else {
-        $perPage = in_array((int) $perPage, [10, 25, 50, 100], true)
-            ? (int) $perPage
-            : 15;
-
-        $documents = $query->paginate($perPage);
+    public function __construct(private AuditService $audit)
+    {
     }
 
-    $documents->withQueryString();
-
-    return view('admin.documents.index', [
-        'documents' => $documents,
-        'categories' => $categories,
-    ]);
-}
-
-    public function create(): View
+    /** Documents reçus par l'agent connecté. */
+    public function index(Request $request): JsonResponse
     {
-        return view('admin.documents.create', [
-            'categories' => CategorieDocument::orderBy('nom')->get(),
-            'typeOptions' => $this->typeOptions,
-            'accesOptions' => $this->accesOptions,
-            'document' => new Document(),
-        ]);
-    }
+        $agent = $this->agentCourant($request);
 
-    public function store(Request $request): RedirectResponse
-    {
-        $validated = $this->validateRequest($request);
+        $documents = Document::whereHas('destinataires', fn ($q) => $q->where('agent_id', $agent->id))
+            ->with('expediteur:id,nom,fonction')
+            ->latest()
+            ->paginate(30);
 
-        $data = $validated;
-
-        if ($request->hasFile('fichier')) {
-            $fichier = $request->file('fichier');
-            $path = $fichier->store('documents', 'public');
-
-            $data['fichier_url'] = $path;
-            $data['format_fichier'] = $fichier->getClientOriginalExtension();
-            $data['taille_fichier_ko'] = (int) round($fichier->getSize() / 1024);
-        }
-
-        Document::create([
-            ...$data,
-            'nombre_telechargements' => 0,
-            'publie_par' => auth()->id(),
-        ]);
-
-        return redirect()
-            ->route('admin.documents.index')
-            ->with('success', 'Document créé avec succès.');
-    }
-
-    public function show(Document $document): View
-    {
-        $document->load(['categorie', 'publiePar']);
-
-        return view('admin.documents.show', [
-            'document' => $document,
-            'typeOptions' => $this->typeOptions,
-        ]);
-    }
-
-    public function edit(Document $document): View
-    {
-        return view('admin.documents.edit', [
-            'document' => $document,
-            'categories' => CategorieDocument::orderBy('nom')->get(),
-            'typeOptions' => $this->typeOptions,
-            'accesOptions' => $this->accesOptions,
-        ]);
-    }
-
-    public function update(Request $request, Document $document): RedirectResponse
-    {
-        $validated = $this->validateRequest($request, document: $document);
-
-        $data = $validated;
-
-        if ($request->hasFile('fichier')) {
-            // Remplace l'ancien fichier
-            if ($document->fichier_url) {
-                Storage::disk('public')->delete($document->fichier_url);
-            }
-
-            $fichier = $request->file('fichier');
-            $path = $fichier->store('documents', 'public');
-
-            $data['fichier_url'] = $path;
-            $data['format_fichier'] = $fichier->getClientOriginalExtension();
-            $data['taille_fichier_ko'] = (int) round($fichier->getSize() / 1024);
-        }
-
-        $document->update($data);
-
-        return redirect()
-            ->route('admin.documents.index')
-            ->with('success', 'Document mis à jour avec succès.');
-    }
-
-    public function destroy(Document $document): RedirectResponse
-    {
-        if ($document->fichier_url) {
-            Storage::disk('public')->delete($document->fichier_url);
-        }
-
-        $document->delete();
-
-        return redirect()
-            ->route('admin.documents.index')
-            ->with('success', 'Document supprimé.');
-    }
-
-    public function telecharger(Document $document): StreamedResponse
-    {
-        if (! $document->telechargeable) {
-            abort(403, 'Ce document n\'est pas téléchargeable. Veuillez consulter le code fourni pour une consultation sur place.');
-        }
-
-        if (! $document->fichier_url || ! Storage::disk('public')->exists($document->fichier_url)) {
-            abort(404, 'Fichier introuvable.');
-        }
-
-        // Seuls les téléchargements effectués par le public depuis le centre de
-        // téléchargement (bibliothèque) incrémentent le compteur de statistiques.
-        if (request()->routeIs('documents.telecharger')) {
-            $document->increment('nombre_telechargements');
-        }
-
-        $nomTelecharge = Str::slug($document->titre)
-            . ($document->format_fichier ? '.' . $document->format_fichier : '');
-
-        return Storage::disk('public')->download($document->fichier_url, $nomTelecharge);
+        return response()->json($documents);
     }
 
     /**
-     * Compteur de téléchargements à jour (JSON, lecture seule).
-     *
-     * Sert au centre de téléchargement public pour actualiser instantanément
-     * le nombre affiché sans recharger la page. N'incrémente rien : le
-     * comptage est fait une seule fois, par la route de téléchargement réelle
-     * (documents.telecharger), ce qui garantit la cohérence avec les
-     * statistiques d'administration.
+     * Dépôt d'un fichier DÉJÀ CHIFFRÉ côté client (multipart/form-data).
+     * Le serveur ne voit jamais le contenu ni le vrai nom du fichier.
      */
-    public function compteur(Document $document)
+    public function store(Request $request): JsonResponse
     {
+        $agent = $this->agentCourant($request);
+
+        $data = $request->validate([
+            'fichier'        => ['required', 'file', 'max:' . config('echange.taille_max_document_ko')],
+            'classification' => ['required', Rule::in(['confidentiel', 'secret'])],
+            'nom_chiffre'    => ['required', 'string', 'max:2048'],
+            'hash_contenu'   => ['required', 'string', 'size:64'],
+            'nonce'          => ['required', 'string', 'max:64'],
+            'signature'      => ['required', 'string', 'max:2048'],
+        ] + $this->reglesDestinataires());
+
+        abort_unless($agent->peutAcceder($data['classification']), 403, 'Habilitation insuffisante.');
+
+        $fichier = $request->file('fichier');
+
+        // Intégrité du transfert : hash SHA-256 du fichier chiffré.
+        abort_unless(
+            hash_equals(strtolower($data['hash_contenu']), hash_file('sha256', $fichier->getRealPath())),
+            422,
+            'Le hash du fichier ne correspond pas.'
+        );
+
+        $disque = Storage::disk(config('echange.disque_documents'));
+        $chemin = $disque->putFile('chiffres', $fichier); // nom aléatoire, jamais le nom d'origine
+
+        try {
+            $document = DB::transaction(function () use ($data, $agent, $fichier, $chemin, $request) {
+                $document = Document::create([
+                    'classification'  => $data['classification'],
+                    'expediteur_id'   => $agent->id,
+                    'nom_chiffre'     => $data['nom_chiffre'],
+                    'chemin_stockage' => $chemin,
+                    'taille'          => $fichier->getSize(),
+                    'hash_contenu'    => strtolower($data['hash_contenu']),
+                    'nonce'           => $data['nonce'],
+                    'signature'       => $data['signature'],
+                ]);
+
+                $this->enregistrerDestinataires($document, $data['destinataires'], $data['classification']);
+                $this->audit->enregistrer('depot_document', $agent, $document, $request->ip());
+
+                return $document;
+            });
+        } catch (\Throwable $e) {
+            $disque->delete($chemin); // pas de fichier orphelin si la transaction échoue
+            throw $e;
+        }
+
+        return response()->json(['uuid' => $document->uuid], 201);
+    }
+
+    /** Métadonnées + clé enveloppée de l'agent connecté. */
+    public function show(Request $request, Document $document): JsonResponse
+    {
+        $agent = $this->agentCourant($request);
+        $destinataire = $this->destinataireAutorise($document, $agent);
+
         return response()->json([
-            'id' => $document->id,
-            'nombre_telechargements' => (int) $document->nombre_telechargements,
+            'document'       => $document->load('expediteur:id,nom,fonction'),
+            'cle_enveloppee' => $destinataire->cle_enveloppee,
+            'cle_agent_id'   => $destinataire->cle_agent_id,
         ]);
     }
-    
 
-    private function validateRequest(Request $request, ?Document $document = null): array
+    /** Téléchargement du fichier chiffré (le client le déchiffre localement). */
+    public function download(Request $request, Document $document): StreamedResponse
     {
-        $validated = $request->validate([
-            'categorie_id' => ['required', 'exists:categories_documents,id'],
-            'titre' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'type' => ['required', 'in:' . implode(',', array_keys($this->typeOptions))],
-            'acces' => ['required', 'in:' . implode(',', array_keys($this->accesOptions))],
-            'telechargeable' => ['sometimes', 'boolean'],
-            'code_consultation' => ['nullable', 'string', 'max:30'],
-            'version' => ['nullable', 'string', 'max:20'],
-            'publie_le' => ['nullable', 'date'],
-            'fichier' => [
-                Rule::requiredIf(function () use ($request, $document) {
-                    // Fichier obligatoire si le document doit être téléchargeable
-                    // et qu'aucun fichier n'existe déjà (cas de l'édition sans remplacement)
-                    return $request->boolean('telechargeable') && ! $document?->fichier_url;
-                }),
-                'file',
-                'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx',
-                'max:20480',
-            ],
-        ]);
+        $agent = $this->agentCourant($request);
+        $destinataire = $this->destinataireAutorise($document, $agent);
 
-        $validated['telechargeable'] = $request->boolean('telechargeable');
+        DB::transaction(function () use ($destinataire, $document, $agent, $request) {
+            $destinataire->marquerCommeLu();
+            $this->audit->enregistrer('telechargement_document', $agent, $document, $request->ip());
+        });
 
-        return $validated;
+        return Storage::disk(config('echange.disque_documents'))
+            ->download($document->chemin_stockage, $document->uuid . '.chiffre');
+    }
+
+    private function destinataireAutorise(Document $document, Agent $agent): Destinataire
+    {
+        abort_unless($agent->peutAcceder($document->classification), 403);
+
+        return $document->destinataires()->where('agent_id', $agent->id)->first()
+            ?? abort(403);
     }
 }

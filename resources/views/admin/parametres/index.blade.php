@@ -452,6 +452,15 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
         <style>
+             /* Titre de la page en blanc */
+        .pagetitle h1,
+        .page-title,
+        .content-header h1,
+        h1.page-title {
+            color: #fff !important;
+        }
+
+        .sed-dash { font-variant-numeric: tabular-nums; --rouge: #f87171; --ambre: #f2b705; --vert: #4ade80; --bleu: #60a5fa; }
             .form-label {
                 font-weight: 600;
             }

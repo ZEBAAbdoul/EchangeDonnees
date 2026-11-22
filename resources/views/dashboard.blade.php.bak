@@ -1,0 +1,12 @@
+<x-admin>
+    @section('title', 'Tableau de bord')
+
+    <x-dashboard
+        :user="$user"
+        :agent="$agent"
+        :agent-actif="$agentActif"
+        :stats="$stats"
+        :graphique="$graphique"
+        :derniers-echanges="$derniersEchanges"
+        :activite-recente="$activiteRecente" />
+</x-admin>

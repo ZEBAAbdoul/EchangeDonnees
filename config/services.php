@@ -32,4 +32,10 @@ return [
         'redirect' => 'http://127.0.0.1:8000/facebook/login/callback',
     ],
 
+    // config/services.php
+    'turnstile' => [
+        'site_key' => env('TURNSTILE_SITE_KEY'),
+        'secret'   => env('TURNSTILE_SECRET_KEY'),
+    ],
+
 ];

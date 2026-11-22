@@ -1,39 +1,11 @@
 <?php
 
-use App\Http\Controllers\ActualiteController;
-use App\Http\Controllers\AdminFormationInformationController;
-use App\Http\Controllers\CategorieDocumentController;
-use App\Http\Controllers\CategorieFormationController;
-use App\Http\Controllers\DocumentController;
-use App\Http\Controllers\EnseignantController;
-use App\Http\Controllers\FiliereController;
-use App\Http\Controllers\FormationController;
-use App\Http\Controllers\IdeeController;
-use App\Http\Controllers\IdeeDirectionController;
-use App\Http\Controllers\InscriptionAdminController;
-use App\Http\Controllers\InscriptionController;
-use App\Http\Controllers\MatiereController;
-use App\Http\Controllers\MesTemoignagesController;
-use App\Http\Controllers\NoteAdminController;
-use App\Http\Controllers\NoteController;
 use App\Http\Controllers\ParametresSiteController;
-use App\Http\Controllers\PartenaireController;
 use App\Http\Controllers\PermissionController;
-use App\Http\Controllers\PhotoAdminController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RoleController;
-use App\Http\Controllers\SessionFormationController;
-use App\Http\Controllers\TemoignageController;
-use App\Http\Controllers\TypePieceController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\VideoAdminController;
-use App\Http\Controllers\RechercheInnovationController;
-use App\Http\Controllers\StatistiqueVisiteController;
-use App\Http\Controllers\StatistiqueFonctionnaliteController;
-use App\Http\Controllers\UnitePedagogiqueController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\InformationController;
-use App\Http\Controllers\InformationConsultationController;
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified'])->group(function () {
 
@@ -48,127 +20,39 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified'])->group(
 
     // ==================== PROFIL ====================
 
-    Route::get('/profile', [ProfileController::class, 'edit'])
-        ->name('profile.edit');
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    Route::patch('/profile', [ProfileController::class, 'update'])
-        ->name('profile.update');
-
-    Route::delete('/profile', [ProfileController::class, 'destroy'])
-        ->name('profile.destroy');
-
-    Route::get('/profile/password', [ProfileController::class, 'editPassword'])
-        ->name('profile.password.edit');
-
-    Route::put('/profile/password', [ProfileController::class, 'updatePassword'])
-        ->name('profile.password.update');
+    Route::get('/profile/password', [ProfileController::class, 'editPassword'])->name('profile.password.edit');
+    Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
 
 
-    // ==================== UTILISATEURS ====================
+    // ==================== UTILISATEURS (super-admin et admin) ====================
 
-    Route::resource('users', UserController::class)
-        ->names('user');
+    Route::middleware('role:super-admin|admin')->group(function () {
 
-    Route::get('/users/stats', [UserController::class, 'stats'])
-        ->name('user.stats');
+        // « stats » AVANT la ressource, sinon elle est interprétée comme users/{user}
+        Route::get('/users/stats', [UserController::class, 'stats'])->name('user.stats');
 
-    Route::patch('users/{user}/toggle-actif', [UserController::class, 'toggle'])
-        ->middleware('role:super-admin')
-        ->name('user.toggle-actif');
+        Route::resource('users', UserController::class)->names('user');
 
-    Route::patch('users/{user}/reset-password', [UserController::class, 'resetPassword'])
-        ->middleware('role:super-admin')
-        ->name('user.reset-password');
+        Route::patch('users/{user}/toggle-actif', [UserController::class, 'toggle'])
+            ->middleware('role:super-admin')
+            ->name('user.toggle-actif');
+
+        Route::patch('users/{user}/reset-password', [UserController::class, 'resetPassword'])
+            ->middleware('role:super-admin')
+            ->name('user.reset-password');
+    });
 
 
     // ==================== RÔLES ET PERMISSIONS ====================
 
     Route::middleware(['role:Gérant'])->group(function () {
-
         Route::resource('role', RoleController::class);
-
         Route::resource('permission', PermissionController::class);
     });
-
-
-    // ==================== ACTUALITÉS ====================
-
-    Route::prefix('actualites')->name('actualites.')->group(function () {
-
-        Route::get('/', [ActualiteController::class, 'adminIndex'])
-            ->name('index');
-
-        Route::get('/create', [ActualiteController::class, 'create'])
-            ->name('create');
-
-        Route::post('/', [ActualiteController::class, 'store'])
-            ->name('store');
-
-        Route::get('/{actualite}/edit', [ActualiteController::class, 'edit'])
-            ->name('edit');
-
-        Route::put('/{actualite}', [ActualiteController::class, 'update'])
-            ->name('update');
-
-        Route::delete('/{actualite}', [ActualiteController::class, 'destroy'])
-            ->name('destroy');
-
-        Route::patch('/{actualite}/publier', [ActualiteController::class, 'publier'])
-            ->name('publier');
-
-        Route::patch('/{actualite}/depublier', [ActualiteController::class, 'depublier'])
-            ->name('depublier');
-    });
-
-
-    // ==================== BIBLIOTHÈQUE DOCUMENTAIRE ====================
-
-    Route::prefix('documents')->name('documents.')->group(function () {
-
-        Route::get('/', [DocumentController::class, 'index'])
-            ->name('index');
-
-        Route::get('/create', [DocumentController::class, 'create'])
-            ->name('create');
-
-        Route::post('/', [DocumentController::class, 'store'])
-            ->name('store');
-
-        Route::get('/{document}/edit', [DocumentController::class, 'edit'])
-            ->name('edit');
-
-        Route::get('/{document}', [DocumentController::class, 'show'])
-            ->name('show');
-
-        Route::put('/{document}', [DocumentController::class, 'update'])
-            ->name('update');
-
-        Route::delete('/{document}', [DocumentController::class, 'destroy'])
-            ->name('destroy');
-
-        Route::get('/{document}/telecharger', [DocumentController::class, 'telecharger'])->name('telecharger');
-    });
-
-
-    // ==================== CATÉGORIES DOCUMENTS ====================
-
-    // Route::prefix('categories-documents')->name('categories-documents.')->group(function () {
-
-    //     Route::get('/', [CategorieDocumentController::class, 'index'])
-    //         ->name('index');
-
-    //     Route::post('/', [CategorieDocumentController::class, 'store'])
-    //         ->name('store');
-
-    //     Route::get('/{categorie}', [CategorieDocumentController::class, 'show'])
-    //         ->name('show');
-
-    //     Route::put('/{categorie}', [CategorieDocumentController::class, 'update'])
-    //         ->name('update');
-
-    //     Route::delete('/{categorie}', [CategorieDocumentController::class, 'destroy'])
-    //         ->name('destroy');
-    // });
 
 
     // ==================== PARAMÈTRES DU SITE ====================
@@ -177,350 +61,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified'])->group(
         ->name('parametres.public');
 
     Route::prefix('parametres')->name('parametres.')->group(function () {
-
-        Route::get('/', [ParametresSiteController::class, 'index'])
-            ->name('index');
-
-        Route::get('/{parametre}', [ParametresSiteController::class, 'show'])
-            ->name('show');
-
-        Route::post('/', [ParametresSiteController::class, 'store'])
-            ->name('store');
-
-        Route::put('/{parametre}', [ParametresSiteController::class, 'update'])
-            ->name('update');
-
-        Route::delete('/{parametre}', [ParametresSiteController::class, 'destroy'])
-            ->name('destroy');
+        Route::get('/', [ParametresSiteController::class, 'index'])->name('index');
+        Route::get('/{parametre}', [ParametresSiteController::class, 'show'])->name('show');
+        Route::post('/', [ParametresSiteController::class, 'store'])->name('store');
+        Route::put('/{parametre}', [ParametresSiteController::class, 'update'])->name('update');
+        Route::delete('/{parametre}', [ParametresSiteController::class, 'destroy'])->name('destroy');
     });
 
-
-    // ==================== INSCRIPTIONS CANDIDATS ====================
-
-    Route::name('inscription.')->group(function () {
-
-        Route::get(
-            'inscription/choisir',
-            [InscriptionController::class, 'create']
-        )->name('create');
-
-        Route::get(
-            'inscription/session/{session}',
-            [InscriptionController::class, 'createforme']
-        )->name('inscriptionforme');
-
-        Route::get(
-            'inscription/{inscription}',
-            [InscriptionController::class, 'show']
-        )->name('show');
-
-        Route::post(
-            'inscription',
-            [InscriptionController::class, 'store']
-        )->name('store');
-
-        Route::post(
-            'inscription/{inscription}/pieces',
-            [InscriptionController::class, 'storePiece']
-        )->name('piece.store');
-
-        Route::get(
-            'pieces/{piece}/telecharger',
-            [InscriptionController::class, 'telechargerPiece']
-        )->name('piece.telecharger');
-
-        Route::put(
-            '/inscription/piece/{piece}',
-            [InscriptionController::class, 'updatePiece']
-        )->name('piece.update');
-
-        Route::delete(
-            'pieces/{piece}',
-            [InscriptionController::class, 'destroyPiece']
-        )->name('piece.destroy');
-    });
-
-
-    // ==================== FORMATIONS ====================
-
-    Route::resource('formations', FormationController::class)
-        ->names('formations');
-
-    Route::patch(
-        'formations/{formation}/statut',
-        [FormationController::class, 'changerStatut']
-    )->name('formations.statut');
-
-
-    // ==================== INFORMATIONS FORMATIONS ====================
-
-    Route::prefix('formation-informations')
-        ->name('formation-informations.')
-        ->group(function () {
-
-            // Liste des informations
-            Route::get('/', [AdminFormationInformationController::class, 'index'])
-                ->name('index');
-
-            // Formulaire de création
-            Route::get('/create', [AdminFormationInformationController::class, 'create'])
-                ->name('create');
-
-            // Enregistrer une information
-            Route::post('/', [AdminFormationInformationController::class, 'store'])
-                ->name('store');
-
-            // Formulaire de modification
-            Route::get('/{formationInformation}/edit', [AdminFormationInformationController::class, 'edit'])
-                ->name('edit');
-
-            // Mettre à jour une information
-            Route::put('/{formationInformation}', [AdminFormationInformationController::class, 'update'])
-                ->name('update');
-
-            // Supprimer une information
-            Route::delete('/{formationInformation}', [AdminFormationInformationController::class, 'destroy'])
-                ->name('destroy');
-        });
-
-
-    // Unitée pédagigiques
-
-    // ==================== UNITÉS PÉDAGOGIQUES ====================
-
-    Route::resource('unites-pedagogiques', UnitePedagogiqueController::class)
-        ->parameters(['unites-pedagogiques' => 'unite_pedagogique']);
-
-    Route::patch(
-        'unites-pedagogiques/{unite_pedagogique}/toggle-publication',
-        [UnitePedagogiqueController::class, 'togglePublication']
-    )->name('unites-pedagogiques.toggle-publication');
-
-    /*
-|--------------------------------------------------------------------------
-| Si tu n'as pas encore de groupe admin, voici la version autonome :
-|--------------------------------------------------------------------------
-|
-| Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
-|     Route::resource('formation-informations', FormationInformationController::class)
-|         ->except(['show']);
-| });
-|
-| Cela génère automatiquement les routes suivantes :
-|   GET    /admin/formation-informations              admin.formation-informations.index
-|   GET    /admin/formation-informations/create        admin.formation-informations.create
-|   POST   /admin/formation-informations               admin.formation-informations.store
-|   GET    /admin/formation-informations/{id}/edit      admin.formation-informations.edit
-|   PUT    /admin/formation-informations/{id}           admin.formation-informations.update
-|   DELETE /admin/formation-informations/{id}           admin.formation-informations.destroy
-*/
-
-
-    // ==================== ENSEIGNANTS ====================
-
-    Route::resource('enseignants', EnseignantController::class)
-        ->except(['show'])
-        ->names('enseignants');
-
-
-    // ==================== FILIÈRES ====================
-
-    Route::resource('filieres', FiliereController::class)
-        ->except(['show'])
-        ->names('filieres');
-
-
-    // ==================== NOTES (ENSEIGNANT) ====================
-
-    Route::prefix('enseignant')
-        ->name('enseignant.')
-        ->middleware(['auth', 'verified', 'role:enseignant|super-admin|dg'])
-        ->group(function () {
-
-            Route::prefix('notes')->name('notes.')->group(function () {
-
-                Route::get('/', [NoteController::class, 'index'])
-                    ->name('index');
-
-                Route::get('/deposer', [NoteController::class, 'create'])
-                    ->name('create');
-
-                Route::post('/deposer', [NoteController::class, 'store'])
-                    ->name('store');
-
-                Route::get('/{note}/telecharger', [NoteController::class, 'telecharger'])
-                    ->name('telecharger');
-
-                Route::delete('/{note}', [NoteController::class, 'destroy'])
-                    ->name('destroy');
-            });
-        });
-
-
-    // ==================== NOTES (ADMINISTRATION) ====================
-
-    Route::prefix('notes')->name('notes.')->group(function () {
-
-        Route::get('/', [NoteAdminController::class, 'index'])
-            ->name('index');
-
-        Route::get('/{note}/telecharger', [NoteAdminController::class, 'telecharger'])
-            ->name('telecharger');
-    });
-
-
-    // ==================== SESSIONS DE FORMATION ====================
-
-    Route::resource('sessions-formation', SessionFormationController::class)
-        ->except(['show'])
-        ->names('sessions-formation');
-
-
-    // ==================== CATÉGORIES DE FORMATION ====================
-
-    Route::resource('categories-formation', CategorieFormationController::class)
-        ->except(['show'])
-        ->names('categories-formation');
-
-
-    // ==================== TYPES DE PIÈCES ====================
-
-    Route::resource('types-pieces', TypePieceController::class)
-        ->except(['show'])
-        ->names('types-pieces');
-
-
-    // ==================== MATIÈRES ====================
-
-    Route::resource('matieres', MatiereController::class)
-        ->except(['show'])
-        ->names('matieres');
-
-
-    // ==================== PARTENAIRES ====================
-
-    Route::resource('partenaires', PartenaireController::class)
-        ->names('partenaires');
-
-
-    // ==================== CANDIDATURES BACK-OFFICE ====================
-
-    Route::prefix('inscriptions')->name('inscriptions.')->group(function () {
-
-        Route::get('/', [InscriptionAdminController::class, 'index'])
-            ->name('index');
-
-        Route::get('/{inscription}', [InscriptionAdminController::class, 'show'])
-            ->name('show');
-
-        Route::post(
-            '/{inscription}/valider',
-            [InscriptionAdminController::class, 'valider']
-        )->name('valider');
-
-        Route::post(
-            '/{inscription}/rejeter',
-            [InscriptionAdminController::class, 'rejeter']
-        )->name('rejeter');
-
-        Route::post(
-            '/{inscription}/incomplet',
-            [InscriptionAdminController::class, 'marquerIncomplet']
-        )->name('incomplet');
-
-        Route::post(
-            '/pieces/{piece}/verifier',
-            [InscriptionAdminController::class, 'verifierPiece']
-        )->name('pieces.verifier');
-    });
-
-
-    // ==================== CATEGORIES-DOCUMENTS ====================
-
-    Route::resource(
-        'categories-documents',
-        CategorieDocumentController::class
-    )->parameters([
-        'categories-documents' => 'categorie',
-    ]);
-
-
-    // ==================== TÉMOIGNAGES ====================
-
-    // Rôle USER : ses propres témoignages
-    Route::middleware('role:user')->group(function () {
-        Route::resource('mes-temoignages', MesTemoignagesController::class)
-            ->parameters(['mes-temoignages' => 'temoignage'])
-            ->except(['show']);
-    });
-
-    // Administration : modération (publier / dépublier / supprimer)
-    Route::middleware('backoffice')->group(function () {
-        Route::resource('temoignages', TemoignageController::class)->only(['index', 'destroy']);
-        Route::patch('temoignages/{temoignage}/toggle', [TemoignageController::class, 'toggle'])
-            ->name('temoignages.toggle');
-    });
-
-
-    // Personnel : ses propres idées (l'accès est contrôlé par IdeePolicy)
-    Route::resource('mes-idees', IdeeController::class)
-        ->parameters(['mes-idees' => 'idee'])
-        ->names('idees')
-        ->except(['show']);
-
-    // DG / SG : toutes les idées
-    Route::resource('boite-a-idees', IdeeDirectionController::class)
-        ->parameters(['boite-a-idees' => 'idee'])
-        ->names('idees-direction')
-        ->only(['index', 'show', 'update']);
-
-
-    // ==================== PHOTOS ====================
-
-    Route::resource('photos', PhotoAdminController::class)
-        ->names('photos');
-
-    Route::resource('partenaires', PartenaireController::class)
-        ->names('partenaires');
-
-
-    // ==================== VIDÉOS ====================
-
-    Route::resource('videos', VideoAdminController::class);
-
-    Route::resource(
-        'recherches-innovations',
-        RechercheInnovationController::class
-    );
-
-    // Publier / dépublier une recherche ou une innovation
-    Route::patch('recherches-innovations/{recherches_innovation}/publier', [RechercheInnovationController::class, 'publier'])
-        ->name('recherches-innovations.publier');
-
-    Route::patch('recherches-innovations/{recherches_innovation}/depublier', [RechercheInnovationController::class, 'depublier'])
-        ->name('recherches-innovations.depublier');
-
-
-    // ==================== STATISTIQUES ====================
-
-    Route::prefix('statistiques')->name('statistiques.')->group(function () {
-
-        Route::get('/visiteurs', [StatistiqueVisiteController::class, 'index'])
-            ->name('visiteurs');
-
-        Route::get('/fonctionnalites', [StatistiqueFonctionnaliteController::class, 'index'])
-            ->name('fonctionnalites');
-    });
-    
-
-    // Consultation : tout utilisateur connecté
-    Route::get('informations/consulter', [InformationConsultationController::class, 'index'])
-        ->name('informations.consulter');
-    Route::get('informations/{information}/fichier', [InformationConsultationController::class, 'telecharger'])
-        ->name('informations.fichier');
-
-    // Gestion : réservée aux gestionnaires (adapte le middleware à ton système de rôles)
-    Route::resource('informations', InformationController::class)
-        ->except('show')
-        ->parameters(['informations' => 'information']);
 });

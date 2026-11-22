@@ -113,8 +113,8 @@ $couleursConfettis = ['#ffd166', '#ffffff', '#ef476f', '#06d6a0', '#4cc9f0', '#f
 
                                 <p class="vb-line vb-d3 mb-0">
                                     Pour procéder au <strong>paiement des frais de scolarité</strong>,
-                                    veuillez contacter le
-                                    <strong>Agence comptable</strong> au numéro :
+                                    veuillez contacter l'
+                                    <strong>agence comptable</strong> au numéro :
                                 </p>
 
                                 @if ($contactRh)

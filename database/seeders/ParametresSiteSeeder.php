@@ -24,35 +24,37 @@ class ParametresSiteSeeder extends Seeder
             // Aucun paramètre n'existe encore : on crée l'enregistrement
             DB::table('parametres_site')->insert([
                 'id' => (string) Str::uuid(),
-                'nom_site' => 'ENEF - École Nationale des Eaux et Forêts',
-                'slogan' => 'Former pour protéger, agir pour préserver.',
-                'logo_url' => '/storage/logos/enef-logo.jpg',
-                'favicon_url' => '/storage/favicons/enef-favicon.ico',
-                'mot_dg_titre' => 'Mot du Directeur Général',
+                'nom_site' => "DGTI - Direction Générale des Transmissions et de l'Informatique",
+                'slogan' => '-',
+                'logo_url' => '/storage/logos/aes-logo.png',
+                'favicon_url' => '/storage/favicons/dgti-favicon.ico',
+                'mot_dg_titre' => 'Commissaire Pricipal de Police',
 
                 'mot_dg_contenu' => <<<'TEXT'
-Depuis 1953, l’École Nationale des Eaux et Forêts (ENEF) œuvre à la formation de professionnels qualifiés au service de la gestion durable des ressources naturelles et de la protection de l’environnement au Burkina Faso.
+Chers Internautes, chers partenaires,
 
-Face aux défis croissants liés aux changements climatiques, à la préservation de la biodiversité et à la gestion durable des ressources naturelles, l’ENEF entend consolider son rôle d’institution de référence dans la formation, le perfectionnement, la recherche et l’expertise dans les domaines des Ressources Naturelles et de l’Environnement.
+Je suis heureux de vous accueillir sur le site de la Direction Générale des Transmissions et de l’Informatique.
 
-Notre ambition est de faire de l’ENEF une école moderne, ouverte sur le monde professionnel, engagée dans l’innovation et capable d’anticiper les besoins en compétences de notre pays et de la sous-région. La diversification de notre offre de formation, le développement de nos unités pédagogiques et de production, le renforcement des partenariats et la valorisation de notre expertise constituent des leviers essentiels de cette dynamique.
+Dans un monde où l’information circule toujours plus vite, la fiabilité des communications et la solidité des systèmes d’information sont devenues des conditions essentielles de l’action des forces de sécurité. C’est à cette exigence que notre direction s’attache à répondre, chaque jour, avec rigueur et sens du service public.
 
-À travers ce site web, nous souhaitons renforcer notre proximité avec nos stagiaires, nos partenaires et l’ensemble de nos publics, tout en offrant une meilleure visibilité à nos formations, nos activités, nos réalisations et nos expertises.
+Ce site a été pensé pour vous permettre de mieux connaître nos missions, de suivre nos actualités et d’accéder simplement à nos plateformes en ligne. Il illustre notre volonté de rapprocher l’administration des citoyens grâce au numérique.
 
-Ensemble, faisons de l’excellence, de l’innovation et de l’engagement les moteurs d’une gestion durable de notre environnement et de nos ressources naturelles.
+Je remercie l’ensemble des agents de la direction pour leur engagement, ainsi que nos partenaires pour leur confiance. Ensemble, poursuivons la modernisation de nos outils au service de la sécurité de tous.
+
+Le Directeur Général
 TEXT,
 
-                'mot_dg_photo_url' => '/storage/dg/dg.jpeg',
-                'mot_dg_nom' => 'COL Fiédi HAKIEKOU',
-                'adresse' => '01 BP 1105, Dindéresso — Bobo-Dioulasso, Burkina Faso',
-                'telephone' => '(+226) 20 98 06 89',
-                'email_contact' => 'infos@enef.gov.bf',
-                'contact_rh' => '(+226) 75 45 98 53',
-                'annee_creation' => 1953,
-                'personne_forme' => 10000,
-                'facebook_url' => 'https://web.facebook.com/enef2021',
-                'linkedin_url' => 'https://linkedin.com/school/enef-sn',
-                'meta_description' => 'Depuis 1953, l\'ENEF forme les cadres et techniciens qui protègent les ressources naturelles du Burkina Faso — formation initiale, formation continue et appui-conseil aux structures publiques et privées.',
+                'mot_dg_photo_url' => '/storage/dg/dg.jpg',
+                'mot_dg_nom' => 'Zakaria HEBIE',
+                'adresse' => '01 BP 6466 OUAGADOUGOU 01 , Sise Avenue Sanematenga, à la station terrienne d’Onatel à Somgandé',
+                'telephone' => '(+226) 25 41 90 83 | (+226)  62 18 05 95 ',
+                'email_contact' => 'dgti@securite.gov.bf ',
+                'contact_rh' => '(+226)  62 18 05 95 ',
+                'annee_creation' => 0000,
+                'personne_forme' => 0000,
+                'facebook_url' => 'https://web.facebook.com/dgti2021',
+                'linkedin_url' => 'https://linkedin.com/school/dgti-sn',
+                'meta_description' => '-',
                 'updated_by' => $user ? $user->id : null,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -62,35 +64,37 @@ TEXT,
             DB::table('parametres_site')
                 ->where('id', $parametres->id)
                 ->update([
-                    'nom_site' => 'ENEF - École Nationale des Eaux et Forêts',
-                    'slogan' => 'Former pour protéger, agir pour préserver.',
-                    'logo_url' => '/storage/logos/enef-logo.jpg',
-                    'favicon_url' => '/storage/favicons/enef-favicon.ico',
-                    'mot_dg_titre' => 'Mot du Directeur Général',
+                    'nom_site' => "DGTI - Direction Générale des Technologies de l'Information",
+                    'slogan' => 'Innover pour l’avenir, agir pour le développement.',
+                    'logo_url' => '/storage/logos/dgti-logo.png',
+                    'favicon_url' => '/storage/favicons/dgti-favicon.ico',
+                    'mot_dg_titre' => 'Commissaire Pricipal de Police',
 
                     'mot_dg_contenu' => <<<'TEXT'
-        Depuis 1953, l’École Nationale des Eaux et Forêts (ENEF) œuvre à la formation de professionnels qualifiés au service de la gestion durable des ressources naturelles et de la protection de l’environnement au Burkina Faso.
+                                Chers visiteurs, chers partenaires,
 
-        Face aux défis croissants liés aux changements climatiques, à la préservation de la biodiversité et à la gestion durable des ressources naturelles, l’ENEF entend consolider son rôle d’institution de référence dans la formation, le perfectionnement, la recherche et l’expertise dans les domaines des Ressources Naturelles et de l’Environnement.
+                        Je suis heureux de vous accueillir sur le site de la Direction Générale des Transmissions et de l’Informatique.
 
-        Notre ambition est de faire de l’ENEF une école moderne, ouverte sur le monde professionnel, engagée dans l’innovation et capable d’anticiper les besoins en compétences de notre pays et de la sous-région. La diversification de notre offre de formation, le développement de nos unités pédagogiques et de production, le renforcement des partenariats et la valorisation de notre expertise constituent des leviers essentiels de cette dynamique.
+                        Dans un monde où l’information circule toujours plus vite, la fiabilité des communications et la solidité des systèmes d’information sont devenues des conditions essentielles de l’action des forces de sécurité. C’est à cette exigence que notre direction s’attache à répondre, chaque jour, avec rigueur et sens du service public.
 
-        À travers ce site web, nous souhaitons renforcer notre proximité avec nos stagiaires, nos partenaires et l’ensemble de nos publics, tout en offrant une meilleure visibilité à nos formations, nos activités, nos réalisations et nos expertises.
+                        Ce site a été pensé pour vous permettre de mieux connaître nos missions, de suivre nos actualités et d’accéder simplement à nos plateformes en ligne. Il illustre notre volonté de rapprocher l’administration des citoyens grâce au numérique.
 
-        Ensemble, faisons de l’excellence, de l’innovation et de l’engagement les moteurs d’une gestion durable de notre environnement et de nos ressources naturelles.
-TEXT,
+                        Je remercie l’ensemble des agents de la direction pour leur engagement, ainsi que nos partenaires pour leur confiance. Ensemble, poursuivons la modernisation de nos outils au service de la sécurité de tous.
+
+                        Le Directeur Général
+                        TEXT,
 
                     'mot_dg_photo_url' => '/storage/dg/dg.jpeg',
-                    'mot_dg_nom' => 'COL Fiédi HAKIEKOU',
-                    'adresse' => '01 BP 1105, Dindéresso — Bobo-Dioulasso, Burkina Faso',
-                    'telephone' => '(+226) 20 98 06 89',
-                    'email_contact' => 'infos@enef.gov.bf',
-                    'contact_rh' => '(+226) 75 45 98 53',
-                    'annee_creation' => 1953,
-                    'personne_forme' => 10000,
-                    'facebook_url' => 'https://web.facebook.com/enef2021',
-                    'linkedin_url' => 'https://linkedin.com/school/enef-sn',
-                    'meta_description' => 'Depuis 1953, l\'ENEF forme les cadres et techniciens qui protègent les ressources naturelles du Burkina Faso — formation initiale, formation continue et appui-conseil aux structures publiques et privées.',
+                    'mot_dg_nom' => 'Zakaria HEBIE',
+                    'adresse' => '01 BP 6466 OUAGADOUGOU 01, Sise Avenue Sanematenga, à la station terrienne d’Onatel à Somgandé.',
+                    'telephone' => '(+226) 25 41 90 83',
+                    'email_contact' => 'dgti@securite.gov.bf ',
+                    'contact_rh' => '(+226)  62 18 05 95 ',
+                    'annee_creation' => 0000,
+                    'personne_forme' => 0000,
+                    'facebook_url' => 'https://web.facebook.com/dgti2021',
+                    'linkedin_url' => 'https://linkedin.com/school/dgti-sn',
+                    'meta_description' => '-',
                     'updated_by' => $user ? $user->id : null,
                     'updated_at' => now(),
                 ]);

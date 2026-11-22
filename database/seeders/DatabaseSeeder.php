@@ -14,28 +14,16 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call(RoleSeeder::class);
+        // $this->call(RoleSeeder::class);
         $this->call(PermissionSeeder::class);
-        $this->call(UserSeeder::class);
         $this->call(ParametresSiteSeeder::class);
-        $this->call(CategoriesFormationSeeder::class);
-        $this->call(FilieresSeeder::class);
-        $this->call(FormationsSeeder::class);
-        $this->call(TemoignagesSeeder::class);
-        $this->call(ActualitesSeeder::class);
-        $this->call(RecherchesInnovationsSeeder::class);
-        $this->call(CategorieDocumentSeeder::class);
-        $this->call(DocumentSeeder::class);
-        $this->call(PartenaireSeeder::class);
-        $this->call(MatiereSeeder::class);
-        $this->call(EnseignantSeeder::class);
-        // $this->call(NoteSeeder::class);
-        $this->call(TypePieceSeeder::class);
-        $this->call(FormationsCatalogueSeeder::class);
-        $this->call(PhotoSeeder::class);
-        $this->call(VideosSeeder::class);
-        $this->call(FormationsInitialesSeeder::class);
-        $this->call(SessionsFormationSeeder::class);
-        $this->call(FormationInformationsSeeder::class);
+
+        $this->call(EtatSeeder::class);
+        $this->call(OrganismeSeeder::class);
+                $this->call(UserSeeder::class);
+
+        $this->call(AgentSeeder::class);
+
+        
     }
 }

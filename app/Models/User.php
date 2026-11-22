@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
@@ -216,8 +217,8 @@ class User extends Authenticatable
         return (bool) $this->est_actif;
     }
 
-    public function enseignant()
-    {
-        return $this->hasOne(Enseignant::class);
-    }
+    public function agent(): HasOne
+{
+    return $this->hasOne(Agent::class, 'user_id');
+}
 }

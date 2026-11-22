@@ -367,7 +367,7 @@
 
     </svg>
 
-    Consulter l'intégration
+    Consulter l'intégalité
 </a>
             @endif
 

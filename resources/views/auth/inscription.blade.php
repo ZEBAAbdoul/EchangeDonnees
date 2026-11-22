@@ -1,6 +1,6 @@
 @extends('layouts.site')
 
-@section('title', 'Créer un compte candidat — ENEF')
+@section('title', 'Créer un compte candidat — DGTI')
 
 @section('content')
 
@@ -11,8 +11,8 @@
                 {{-- ===================== COLONNE INFO ===================== --}}
                 <div class="auth-side">
                     <div class="eyebrow-line"><span class="rule"></span> Espace candidat</div>
-                    <h2 style="color:#fff;max-width:14ch;">Rejoignez l'École Nationale des Eaux et Forêts</h2>
-                    <p style="color:#d9e4d6;font-size:15.5px;max-width:36ch;">
+                    <h2 style="color:#fff;max-width:16ch;">Rejoignez la Direction Générale des Transmissions et de l'Informatique</h2>
+                    <p style="color:#d6e2f5;font-size:15.5px;max-width:36ch;">
                         Créez votre compte pour déposer votre dossier de candidature, suivre son instruction en
                         temps réel et consulter les résultats dès leur publication.
                     </p>
@@ -33,7 +33,7 @@
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M20 6L9 17l-5-5" />
                             </svg>
-                            Suivre son dossier
+                            Suivi de votre dossier
                         </li>
                     </ul>
                 </div>
@@ -44,7 +44,7 @@
                     <p style="color:var(--ink-soft);font-size:14px;margin-bottom:24px;">
                         Déjà inscrit ?
                         <a href="{{ route('login') }}"
-                            style="color:var(--forest-mid);font-weight:700;text-decoration:underline;">Connectez-vous</a>
+                            style="color:var(--d-primary-2);font-weight:700;text-decoration:underline;">Connectez-vous</a>
                     </p>
 
                     @if ($errors->any())
@@ -255,7 +255,7 @@
                                 <label for="ville">Ville <span class="required-star">*</span></label>
                                 <input id="ville" type="text" name="ville" value="{{ old('ville') }}"
                                     class="{{ $errors->has('ville') ? 'is-invalid' : '' }}" required
-                                    placeholder="Ex. Bobo-Dioulasso">
+                                    placeholder="Ex. Ouagadougou">
                                 @error('ville')
                                     <span class="field-error">{{ $message }}</span>
                                 @enderror
@@ -292,14 +292,13 @@
                             </div>
                         </div>
 
-
                         <label class="checkbox-row">
                             <input type="checkbox" name="terms" value="1" required
                                 {{ old('terms') ? 'checked' : '' }}>
                             <span>J'accepte les <a href="{{ route('conditionutilisation') }}">conditions d'utilisation</a>
                                 et la
                                 <a href="{{ route('politiqueConfidentialite') }}">politique de confidentialité</a> de
-                                l'ENEF.</span>
+                                la DGTI.</span>
                         </label>
                         @error('terms')
                             <span class="field-error d-block">{{ $message }}</span>
@@ -327,6 +326,11 @@
 @push('styles')
     <style>
         .auth-grid {
+            --d-primary: #0b2a5b;
+            --d-primary-2: #1456b8;
+            --d-accent: #f2b705;
+            --d-soft: #e8f0fc;
+
             display: grid;
             grid-template-columns: .8fr 1.2fr;
             gap: 0;
@@ -335,7 +339,7 @@
         }
 
         .auth-side {
-            background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 60%, #3f9443 100%);
+            background: linear-gradient(135deg, #0b2a5b 0%, #123f8c 60%, #1456b8 100%);
             color: #fff;
             padding: 52px 40px;
             display: flex;
@@ -349,7 +353,17 @@
             content: "";
             position: absolute;
             inset: 0;
-            background: radial-gradient(500px 340px at 90% 10%, rgba(127, 166, 107, .28), transparent 60%);
+            background: radial-gradient(500px 340px at 90% 10%, rgba(242, 183, 5, .22), transparent 60%);
+        }
+
+        .auth-side::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 5px;
+            background: var(--d-accent);
         }
 
         .auth-side>* {
@@ -375,15 +389,15 @@
             align-items: center;
             gap: 10px;
             font-size: 13.5px;
-            color: #dbe6d8;
+            color: #d6e2f5;
         }
 
         .auth-perks svg {
             width: 18px;
             height: 18px;
-            color: var(--leaf);
+            color: var(--d-accent);
             flex-shrink: 0;
-            background: rgba(127, 166, 107, .18);
+            background: rgba(242, 183, 5, .16);
             border-radius: 50%;
             padding: 3px;
             box-sizing: content-box;
@@ -451,13 +465,14 @@
         }
 
         .nat-option:has(input:checked) {
-            border-color: var(--forest-mid);
-            background: var(--water-soft);
-            color: var(--forest-deep);
+            border-color: var(--d-primary-2);
+            background: var(--d-soft);
+            color: var(--d-primary);
         }
 
         .nat-option input {
             flex-shrink: 0;
+            accent-color: var(--d-primary-2);
         }
 
         .form-row {
@@ -500,8 +515,9 @@
         .form-row input:focus,
         .form-row select:focus {
             outline: none;
-            border-color: var(--forest-mid);
+            border-color: var(--d-primary-2);
             background: var(--white);
+            box-shadow: 0 0 0 3px rgba(20, 86, 184, .15);
         }
 
         .checkbox-row {
@@ -517,10 +533,11 @@
         .checkbox-row input {
             margin-top: 3px;
             flex-shrink: 0;
+            accent-color: var(--d-primary-2);
         }
 
         .checkbox-row a {
-            color: var(--forest-mid);
+            color: var(--d-primary-2);
             font-weight: 600;
             text-decoration: underline;
         }
@@ -545,10 +562,7 @@
         .btn:disabled {
             opacity: .5;
             cursor: not-allowed;
-        }
-
-        .btn-primary:disabled:hover {
-            background: var(--clay);
+            pointer-events: none;
         }
 
         @media (max-width: 900px) {
@@ -567,22 +581,6 @@
                 grid-template-columns: 1fr;
             }
         }
-
-        @media (max-width: 900px) {
-            .auth-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .auth-side,
-            .auth-card {
-                padding: 36px 28px;
-            }
-
-            .form-row-split,
-            .form-row-split--phone,
-            .nat-toggle {
-                grid-template-columns: 1fr;
-            }
     </style>
 @endpush
 
