@@ -112,7 +112,7 @@
         }
         .logo img:hover { filter: drop-shadow(0 0 20px rgba(var(--sed-accent-rgb), .9)); }
 
-        /* Les style */
+        /* Les style pour le login avec image logo du AES*/
         .title {
             text-align: center;
             font-size: 24px;

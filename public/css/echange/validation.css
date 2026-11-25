@@ -1,0 +1,30 @@
+.ech-apercu:empty, .ech-validation:empty { display: none; }
+.ech-alerte { padding: .6rem .8rem; border-radius: 6px; margin: .5rem 0; border-left: 4px solid; font-size: .92rem; }
+.ech-alerte-info { background: #e8f1fb; border-color: #2f6fb3; color: #17375e; }
+.ech-alerte-warn { background: #fff4de; border-color: #d98e04; color: #5b3b00; }
+.ech-alerte-err  { background: #fde8e8; border-color: #c0392b; color: #6b1f17; }
+.ech-alerte-ok   { background: #e6f5ea; border-color: #2e8b57; color: #164a2a; }
+
+.ech-badge { display: inline-block; padding: .15rem .55rem; border-radius: 999px; font-size: .78rem; font-weight: 600; }
+.ech-v-attente { background: #fff1cc; color: #7a5200; }
+.ech-v-validee { background: #dbeafe; color: #1e4f8f; }
+.ech-v-liberee { background: #d9f2e1; color: #17613a; }
+.ech-v-refusee { background: #fbdcdc; color: #8a2119; }
+
+.ech-validation { border: 1px solid #d0d5dd; border-radius: 8px; padding: .8rem 1rem; margin: .8rem 0; }
+.ech-validation h4 { margin: 0 0 .5rem; font-size: 1rem; display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+.ech-validation ul { list-style: none; padding: 0; margin: .5rem 0; }
+.ech-validation li { padding: .4rem 0; border-bottom: 1px dashed #e0e3e8; }
+.ech-validation li:last-child { border-bottom: 0; }
+.ech-ligne { display: flex; justify-content: space-between; gap: .6rem; flex-wrap: wrap; }
+.ech-ok { color: #17613a; } .ech-ko { color: #b42318; font-weight: 600; } .ech-discret { color: #667085; font-size: .85rem; }
+.ech-motif { margin: .3rem 0 0; padding: .4rem .6rem; background: #f8f0f0; border-radius: 4px; }
+.ech-actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .6rem; }
+.ech-actions button { padding: .45rem .9rem; border-radius: 6px; border: 1px solid #98a2b3; background: #fff; cursor: pointer; }
+.ech-actions button:disabled { opacity: .55; cursor: wait; }
+.ech-btn-ok { background: #2e8b57 !important; color: #fff; border-color: #2e8b57 !important; }
+.ech-btn-ko { background: #c0392b !important; color: #fff; border-color: #c0392b !important; }
+.ech-refus { width: 100%; margin-top: .5rem; }
+.ech-refus textarea { width: 100%; min-height: 80px; padding: .5rem; box-sizing: border-box; }
+.ech-compteur { background: #c0392b; color: #fff; border-radius: 999px; padding: 0 .45rem; font-size: .75rem; margin-left: .3rem; }
+.ech-onglet { cursor: pointer; }

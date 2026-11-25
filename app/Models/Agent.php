@@ -14,7 +14,13 @@ class Agent extends Model
     use HasUuids;
 
     protected $fillable = [
-        'user_id', 'organisme_id', 'nom', 'fonction', 'habilitation', 'est_admin', 'actif',
+        'user_id',
+        'organisme_id',
+        'nom',
+        'fonction',
+        'habilitation',
+        'est_admin',
+        'actif',
     ];
 
     protected $casts = [

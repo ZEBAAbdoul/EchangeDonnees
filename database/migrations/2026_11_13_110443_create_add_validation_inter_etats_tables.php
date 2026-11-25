@@ -58,7 +58,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('echanges_donnees_validations');
-
+        DB::statement("DELETE FROM echanges_donnees_destinataires WHERE role = 'valideur'");
         DB::statement("UPDATE echanges_donnees_destinataires SET cle_chiffree = '' WHERE cle_chiffree IS NULL");
         DB::statement('ALTER TABLE echanges_donnees_destinataires ALTER COLUMN cle_chiffree SET NOT NULL');
 

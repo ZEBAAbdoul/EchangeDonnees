@@ -72,6 +72,61 @@
 .sed-statut.traite { background: #0f9d58; }
 .sed-statut.rejete { background: #d93025; }
 .sed-statut.emis { background: #00838f; }
+/* Validation interétatique : échange à valider (administrateur) ou en attente de clé (destinataire d'un autre État) */
+.sed-statut.valideur, .sed-statut.attente { background: #ffb300; color: #1a1a1a; }
 
 .sed-champs dt { color: #00d4ff; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; margin-top: 10px; }
 .sed-champs dd { margin: 2px 0 0; white-space: pre-wrap; word-break: break-word; }
+
+/* ---------- Fiche d'un échange : la photo flotte en haut à droite, le texte l'entoure ---------- */
+.sed-fiche::after { content: ""; display: block; clear: both; }
+.sed-fiche-titre { color: #fff; word-break: break-word; }
+
+.sed-fiche-photo { float: right; width: 150px; margin: 0 0 12px 16px; }
+.sed-fiche-photo[data-type="vehicule"] { width: 210px; }
+.sed-fiche-photo-cadre {
+    min-height: 40px; padding: 4px; text-align: center;
+    background: rgba(15, 31, 61, .8);
+    border: 1px solid rgba(0, 212, 255, .25); border-radius: 8px;
+}
+.sed-photo {
+    display: block; width: 100%; height: auto; max-height: 260px;
+    object-fit: cover; border-radius: 6px; cursor: zoom-in;
+}
+.sed-fiche-photo[data-type="personne"] .sed-photo { aspect-ratio: 3 / 4; }
+.sed-fiche-photo[data-type="vehicule"] .sed-photo { aspect-ratio: 4 / 3; }
+.sed-photo-apercu {
+    max-width: 160px; max-height: 160px; border-radius: 8px;
+    border: 1px solid rgba(0, 212, 255, .3);
+}
+@media (max-width: 575px) {
+    .sed-fiche-photo, .sed-fiche-photo[data-type="vehicule"] { float: none; width: 100%; max-width: 260px; margin: 0 auto 12px; }
+}
+
+/* ---------- Validation interétatique ---------- */
+.sed-validation {
+    background: rgba(15, 31, 61, .6);
+    border-color: rgba(0, 212, 255, .3) !important;
+}
+.sed-validation ul li { padding: 2px 0; }
+
+/* Alertes sur fond sombre (aperçu d'envoi, validation, bandeaux du module) */
+.sed-echange .alert-warning { background: rgba(255, 179, 0, .12); border-color: rgba(255, 179, 0, .45); color: #ffd777; }
+.sed-echange .alert-info    { background: rgba(0, 212, 255, .10); border-color: rgba(0, 212, 255, .40); color: #9fe9ff; }
+.sed-echange .alert-danger  { background: rgba(217, 48, 37, .15); border-color: rgba(217, 48, 37, .50); color: #ff9c94; }
+.sed-echange .alert-success { background: rgba(0, 230, 118, .10); border-color: rgba(0, 230, 118, .40); color: #7dffb5; }
+.sed-echange .alert-warning .alert-link { color: #fff; }
+
+/* ---------- Recherche dans les échanges ---------- */
+#don-q-compteur:empty { display: none; }
+.sed-echange .input-group-text {
+    background: rgba(15, 31, 61, .8); border: 1px solid rgba(0, 212, 255, .25); color: #7a9cc0;
+}
+.sed-echange input[type="date"] { color-scheme: dark; }
+
+/* ---------- Administration ---------- */
+.sed-droit {
+    display: inline-block; font-size: .68rem; font-weight: 700; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 10px; background: #7b1fa2; color: #fff;
+}
+#table-adm-agents tbody tr.inactif > * { opacity: .55; }

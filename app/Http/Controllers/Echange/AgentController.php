@@ -40,6 +40,7 @@ class AgentController extends Controller
                 'fonction'        => $a->fonction,
                 'organisme'       => $a->organisme->sigle,
                 'etat'            => $a->organisme->etat->code,
+                'est_admin'       => (bool) $a->est_admin,
                 'cle_chiffrement' => $a->cleActive?->cle_chiffrement,
                 'cle_signature'   => $a->cleActive?->cle_signature,
             ]);

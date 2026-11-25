@@ -32,7 +32,7 @@
                     </div>
                     <div class="card-body">
                         <div class="row g-2 mb-3">
-                            <div class="col-md-4">
+                            <div class="col-12 col-md-6">
                                 <div class="btn-group w-100" role="group" aria-label="Sens">
                                     <button type="button" id="don-sens-recus" class="btn btn-sm btn-outline-info active">
                                         Reçus <span id="don-nb-recus" class="badge bg-danger ms-1 d-none">0</span>
@@ -40,14 +40,17 @@
                                     <button type="button" id="don-sens-envoyes" class="btn btn-sm btn-outline-info">
                                         Envoyés
                                     </button>
+                                    <button type="button" id="don-sens-valider" class="btn btn-sm btn-outline-info">
+                                        À valider <span id="don-nb-valider" class="badge bg-danger ms-1 d-none">0</span>
+                                    </button>
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-6 col-md-3">
                                 <select id="don-filtre-type" class="form-select form-select-sm" aria-label="Type">
                                     <option value="">Tous les types</option>
                                 </select>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-6 col-md-3">
                                 <select id="don-filtre-statut" class="form-select form-select-sm" aria-label="Statut">
                                     <option value="">Tous les statuts</option>
                                     <option value="nouveau">Nouveau</option>
@@ -56,6 +59,46 @@
                                     <option value="rejete">Rejeté</option>
                                 </select>
                             </div>
+                        </div>
+
+                        {{-- Recherche : faite dans le navigateur sur les échanges déchiffrés (rien n'est envoyé au serveur) --}}
+                        <div class="row g-2 mb-3">
+                            <div class="col-12">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text"><i class="fas fa-magnifying-glass"></i></span>
+                                    <input type="search" id="don-q" class="form-control"
+                                        placeholder="Rechercher : nom, plaque, lieu, objet, description…"
+                                        autocomplete="off" spellcheck="false" aria-label="Rechercher dans les échanges">
+                                    <button type="button" id="don-q-raz" class="btn btn-outline-secondary"
+                                        title="Effacer la recherche" aria-label="Effacer la recherche">
+                                        <i class="fas fa-xmark"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <select id="don-f-priorite" class="form-select form-select-sm" aria-label="Priorité">
+                                    <option value="">Toutes priorités</option>
+                                    <option value="normale">Normale</option>
+                                    <option value="haute">Haute</option>
+                                    <option value="urgente">Urgente</option>
+                                </select>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <select id="don-f-niveau" class="form-select form-select-sm" aria-label="Classification">
+                                    <option value="">Toutes classifications</option>
+                                    <option value="1">Public</option>
+                                    <option value="2">Restreint</option>
+                                    <option value="3">Confidentiel</option>
+                                    <option value="4">Secret</option>
+                                </select>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <input type="date" id="don-f-du" class="form-control form-control-sm" aria-label="Du">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <input type="date" id="don-f-au" class="form-control form-control-sm" aria-label="Au">
+                            </div>
+                            <div class="col-12 small text-muted" id="don-q-compteur" aria-live="polite"></div>
                         </div>
 
                         <div class="table-responsive">
@@ -108,6 +151,9 @@
                             <div id="don-detail-meta" class="small text-muted mb-3"></div>
 
                             <dl id="don-detail-champs" class="sed-champs"></dl>
+
+                            {{-- Validation interétatique : décisions signées, approbation / refus, relance, annulation --}}
+                            <div id="don-detail-validation" class="sed-validation border rounded p-2 mb-3 d-none"></div>
 
                             <div id="don-detail-actions" class="d-flex flex-wrap gap-2 mb-3"></div>
 
@@ -177,8 +223,12 @@
                         <div id="don-agents" class="sed-nc-agents mb-2"></div>
                         <div class="small text-muted mb-3">
                             Vous gardez toujours une copie. Seuls les agents dont l'habilitation couvre la
-                            classification choisie peuvent recevoir l'échange.
+                            classification choisie peuvent recevoir l'échange. Un envoi vers un autre État
+                            doit d'abord être approuvé par les administrateurs de votre État.
                         </div>
+
+                        {{-- Aperçu : qui reçoit tout de suite, qui doit valider --}}
+                        <div id="don-apercu-envoi" class="mb-3" aria-live="polite"></div>
 
                         <div class="d-flex gap-2">
                             <button type="button" id="btn-envoyer-don" class="btn btn-primary flex-grow-1">

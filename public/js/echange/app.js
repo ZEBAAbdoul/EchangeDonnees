@@ -969,12 +969,31 @@
         traite: "Traité",
         rejete: "Rejeté",
         emis: "Envoyé",
+        valideur: "À valider",
+        attente: "En attente de validation",
     };
+    const VALIDATIONS = {
+        en_attente: ["En attente de validation", "warning text-dark"],
+        validee: ["Validé : transmission en cours", "info text-dark"],
+        liberee: ["Validé et transmis", "success"],
+        refusee: ["Refusé", "danger"],
+        expiree: ["Expiré", "danger"],
+        annulee: ["Annulé", "secondary"],
+    };
+    const DECISIONS = {
+        en_attente: "en attente",
+        approuve: "a approuvé",
+        refuse: "a refusé",
+    };
+    const DELAI_VALIDATION_JOURS = 7; // même valeur que ValidationEchange::DELAI_JOURS côté serveur
+    const essaisLiberation = new Set(); // échanges dont la transmission a déjà été tentée dans cette session
+    const aValider = (d) =>
+        d.ma_validation === "en_attente" && d.validation === "en_attente";
     const PRIO = { normale: "Normale", haute: "Haute", urgente: "Urgente" };
 
     let donnees = [];
     let donneeCourante = null; // identifiant de l'échange affiché dans le détail
-    let sensDon = "recu"; // 'recu' ou 'envoye'
+    let sensDon = "recu"; // 'recu', 'envoye' ou 'a_valider'
     let empreinteDon = "";
     let photoChoisie = null; // fichier photo choisi dans le formulaire
     let apercuUrl = null; // adresse temporaire de l'aperçu
@@ -1012,8 +1031,14 @@
         return el("span", "sed-statut " + statut, STATUTS[statut] || statut);
     }
 
+    /** Pastille de l'état de validation interétatique (null si l'échange n'en demande pas). */
+    function badgeValidation(d) {
+        const v = VALIDATIONS[d.validation];
+        return v ? el("span", "badge bg-" + v[1] + " ms-1", v[0]) : null;
+    }
+
     function partieConcernee(d) {
-        if (d.sens === "recu")
+        if (d.sens !== "envoye")
             return d.expediteur ? d.expediteur.nom : "Inconnu";
         const noms = (d.destinataires || []).map((x) => x.agent.nom);
         if (!noms.length) return "—";
@@ -1021,6 +1046,94 @@
             noms.slice(0, 2).join(", ") +
             (noms.length > 2 ? " +" + (noms.length - 2) : "")
         );
+    }
+
+    /* ---- Recherche dans les échanges ---- */
+    // Le contenu est chiffré de bout en bout : le serveur ne peut pas le chercher. La recherche se fait donc ICI,
+    // dans le navigateur, sur les échanges déjà déchiffrés. Ce qui est saisi n'est ni envoyé ni conservé.
+    const normaliser = (s) =>
+        String(s === null || s === undefined ? "" : s)
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase();
+
+    /** Textes consultables d'un échange : [{ libelle, texte }], calculés une seule fois par échange. */
+    function indexDe(d) {
+        if (d._index) return d._index;
+        const sc = schemaDe(d.type);
+        const items = [];
+        const ajouter = function (libelle, valeur) {
+            if (valeur === null || valeur === undefined || valeur === "") return;
+            items.push({ libelle: libelle, texte: normaliser(valeur) });
+        };
+        ajouter("Type", sc.libelle);
+        if (!d.erreur && d.champs) {
+            sc.champs.forEach((c) =>
+                ajouter(c.cle === "objet" ? "Objet" : c.libelle, d.champs[c.cle]),
+            );
+        }
+        ajouter("Expéditeur", d.expediteur && d.expediteur.nom);
+        (d.destinataires || []).forEach((x) =>
+            ajouter("Destinataire", x.agent && x.agent.nom),
+        );
+        d._index = items;
+        return items;
+    }
+
+    /** Valeurs actuelles des critères de recherche (champs absents de la vue = critère vide). */
+    function filtresDonnees() {
+        const val = (sel) => {
+            const n = $(sel);
+            return n ? n.value : "";
+        };
+        return {
+            termes: normaliser(val("#don-q")).split(/\s+/).filter(Boolean),
+            priorite: val("#don-f-priorite"),
+            niveau: val("#don-f-niveau"),
+            du: val("#don-f-du"),
+            au: val("#don-f-au"),
+        };
+    }
+
+    const rechercheActive = (f) =>
+        f.termes.length > 0 || !!(f.priorite || f.niveau || f.du || f.au);
+
+    /**
+     * L'échange correspond-il aux critères ? Retourne null si non, sinon la liste des libellés de champs
+     * où les mots ont été trouvés (vide s'il n'y a pas de mots). Tous les mots doivent être présents.
+     */
+    function correspond(d, f) {
+        if (f.priorite && d.priorite !== f.priorite) return null;
+        if (f.niveau && String(d.niveau) !== f.niveau) return null;
+        if (f.du || f.au) {
+            const t = d.date ? new Date(d.date).getTime() : NaN;
+            if (isNaN(t)) return null;
+            if (f.du && t < new Date(f.du + "T00:00:00").getTime()) return null;
+            if (f.au && t > new Date(f.au + "T23:59:59.999").getTime()) return null;
+        }
+        if (!f.termes.length) return [];
+
+        const index = indexDe(d);
+        const trouves = [];
+        for (const terme of f.termes) {
+            const hits = index.filter((i) => i.texte.indexOf(terme) !== -1);
+            if (!hits.length) return null;
+            hits.forEach(function (i) {
+                if (trouves.indexOf(i.libelle) === -1) trouves.push(i.libelle);
+            });
+        }
+        return trouves;
+    }
+
+    function reinitialiserRecherche() {
+        ["#don-q", "#don-f-priorite", "#don-f-niveau", "#don-f-du", "#don-f-au"].forEach(
+            function (sel) {
+                const n = $(sel);
+                if (n) n.value = "";
+            },
+        );
+        const c = $("#don-q-compteur");
+        if (c) c.textContent = "";
     }
 
     /** Affiche (ou retire) la pastille rouge du menu Données. */
@@ -1038,12 +1151,18 @@
         }
     }
 
-    /** Échanges reçus pas encore ouverts : fonctionne même trousseau fermé (le statut n'est pas chiffré). */
+    /**
+     * Échanges reçus pas encore ouverts + échanges à valider : fonctionne même trousseau fermé
+     * (le statut et l'état de validation ne sont pas chiffrés).
+     */
     async function majBadgeDonnees() {
         const brut = await E.api.donnees();
         appliquerBadgeDonnees(
-            brut.filter((d) => d.sens === "recu" && d.statut === "nouveau")
-                .length,
+            brut.filter(
+                (d) =>
+                    (d.sens === "recu" && d.statut === "nouveau") ||
+                    aValider(d),
+            ).length,
         );
     }
 
@@ -1054,30 +1173,65 @@
         const nonLus = donnees.filter(
             (d) => d.sens === "recu" && d.statut === "nouveau",
         ).length;
+        const nbValider = donnees.filter(aValider).length;
         const pastille = $("#don-nb-recus");
         pastille.textContent = String(nonLus);
         pastille.classList.toggle("d-none", !nonLus);
-        appliquerBadgeDonnees(nonLus); // le menu reflète toujours la liste affichée
+        const pastilleV = $("#don-nb-valider");
+        if (pastilleV) {
+            pastilleV.textContent = String(nbValider);
+            pastilleV.classList.toggle("d-none", !nbValider);
+        }
+        appliquerBadgeDonnees(nonLus + nbValider); // le menu reflète toujours la liste affichée
 
-        $("#don-col-partie").textContent = sensDon === "recu" ? "De" : "À";
+        $("#don-col-partie").textContent = sensDon === "envoye" ? "À" : "De";
         $("#don-sens-recus").classList.toggle("active", sensDon === "recu");
         $("#don-sens-envoyes").classList.toggle("active", sensDon === "envoye");
+        const bv = $("#don-sens-valider");
+        if (bv) bv.classList.toggle("active", sensDon === "a_valider");
 
         const fType = $("#don-filtre-type").value;
         const fStatut = $("#don-filtre-statut").value;
-        const lignes = donnees.filter(
-            (d) =>
-                d.sens === sensDon &&
-                (!fType || d.type === fType) &&
-                (!fStatut || d.statut === fStatut),
-        );
+        const f = filtresDonnees();
+        const recherche = rechercheActive(f);
+        // Avec des mots saisis, la recherche porte sur TOUS les échanges (reçus, envoyés, à valider)
+        const toutesVues = f.termes.length > 0;
+        const trouvailles = new Map(); // id de l'échange -> libellés des champs où les mots ont été trouvés
+        const lignes = donnees.filter(function (d) {
+            if (
+                !toutesVues &&
+                !(sensDon === "a_valider"
+                    ? d.ma_validation !== null
+                    : d.sens === sensDon)
+            )
+                return false;
+            if (fType && d.type !== fType) return false;
+            if (fStatut && d.statut !== fStatut) return false;
+            const m = correspond(d, f);
+            if (m === null) return false;
+            trouvailles.set(d.id, m);
+            return true;
+        });
+
+        const compteur = $("#don-q-compteur");
+        if (compteur) {
+            compteur.textContent = recherche
+                ? lignes.length +
+                  " résultat(s)" +
+                  (toutesVues ? " dans tous les échanges" : "")
+                : "";
+        }
 
         if (!lignes.length) {
             const tr = el("tr");
             const td = el(
                 "td",
                 "text-center text-muted py-4",
-                "Aucun échange.",
+                recherche
+                    ? "Aucun échange ne correspond à la recherche."
+                    : sensDon === "a_valider"
+                      ? "Aucun échange à valider."
+                      : "Aucun échange.",
             );
             td.colSpan = 7;
             tr.appendChild(td);
@@ -1089,7 +1243,8 @@
             const tr = el(
                 "tr",
                 (d.id === donneeCourante ? "active " : "") +
-                    (d.sens === "recu" && d.statut === "nouveau"
+                    ((d.sens === "recu" && d.statut === "nouveau") ||
+                    aValider(d)
                         ? "sed-non-lu"
                         : ""),
             );
@@ -1105,6 +1260,16 @@
                 const cam = el("i", "fas fa-camera ms-2 text-info");
                 cam.title = "Photo jointe";
                 tdObjet.appendChild(cam);
+            }
+            const champsTrouves = trouvailles.get(d.id) || [];
+            if (toutesVues && champsTrouves.length) {
+                tdObjet.appendChild(
+                    el(
+                        "div",
+                        "small text-info",
+                        "Trouvé dans : " + champsTrouves.join(", "),
+                    ),
+                );
             }
             tr.appendChild(tdObjet);
 
@@ -1139,6 +1304,24 @@
 
             const tdSt = el("td");
             tdSt.appendChild(badgeStatut(d.statut));
+            if (toutesVues) {
+                tdSt.appendChild(
+                    el(
+                        "span",
+                        "badge bg-secondary ms-1",
+                        d.sens === "envoye"
+                            ? "Envoyé"
+                            : d.sens === "a_valider"
+                              ? "À valider"
+                              : "Reçu",
+                    ),
+                );
+            }
+            // Les échanges reçus sont déjà transmis : le badge de validation ne concerne que l'émetteur et les valideurs
+            if (d.sens !== "recu" && d.validation !== "non_requise") {
+                const bval = badgeValidation(d);
+                if (bval) tdSt.appendChild(bval);
+            }
             if (d.signatureValide === false) {
                 const alerte = el(
                     "i",
@@ -1265,6 +1448,322 @@
         $("#don-detail-champs").textContent = "";
         $("#don-detail-actions").textContent = "";
         $("#don-detail-suivi tbody").textContent = "";
+        const zv = $("#don-detail-validation");
+        if (zv) {
+            zv.textContent = "";
+            zv.classList.add("d-none");
+        }
+    }
+
+    /* ---- Validation interétatique ---- */
+    const alerteDon = (type, texte) =>
+        el("div", "alert alert-" + type + " py-2 px-3 small mb-2", texte);
+
+    function boutonDon(libelle, classe, icone) {
+        const b = el("button", "btn btn-sm " + classe);
+        b.type = "button";
+        b.appendChild(el("i", "fas " + icone + " me-1"));
+        b.appendChild(document.createTextNode(libelle));
+        return b;
+    }
+
+    /** Bloc « Validation interétatique » : décisions signées, approbation/refus, relance, annulation. */
+    function rendreValidation(d) {
+        const zone = $("#don-detail-validation");
+        if (!zone) return;
+        zone.textContent = "";
+        if (d.erreur || d.validation === "non_requise") {
+            zone.classList.add("d-none");
+            return;
+        }
+        zone.classList.remove("d-none");
+
+        const titre = el("div", "fw-bold mb-2", "Validation interétatique");
+        const b = badgeValidation(d);
+        if (b) titre.appendChild(b);
+        if (d.validation === "en_attente" && d.expire_le) {
+            titre.appendChild(
+                el(
+                    "span",
+                    "small text-muted ms-2",
+                    "expire le " +
+                        new Date(d.expire_le).toLocaleString("fr-FR"),
+                ),
+            );
+        }
+        zone.appendChild(titre);
+
+        // Décisions des administrateurs (signatures vérifiées dans ce navigateur)
+        if (d.validations.length) {
+            const ul = el("ul", "list-unstyled small mb-2");
+            d.validations.forEach(function (v) {
+                const li = el("li", "mb-1");
+                li.appendChild(
+                    document.createTextNode(
+                        v.agent.nom +
+                            " " +
+                            (DECISIONS[v.decision] || v.decision) +
+                            (v.decide_le
+                                ? " · " +
+                                  new Date(v.decide_le).toLocaleString("fr-FR")
+                                : "") +
+                            " ",
+                    ),
+                );
+                if (v.decision !== "en_attente") {
+                    li.appendChild(
+                        v.signatureOk === true
+                            ? el("span", "text-success", "✓ signature vérifiée")
+                            : el(
+                                  "span",
+                                  "text-danger fw-bold",
+                                  "✗ signature NON valide",
+                              ),
+                    );
+                }
+                if (v.decision === "refuse") {
+                    li.appendChild(
+                        el(
+                            "div",
+                            "text-danger",
+                            "Motif : " + (v.motif || "(illisible)"),
+                        ),
+                    );
+                }
+                ul.appendChild(li);
+            });
+            zone.appendChild(ul);
+        }
+
+        // Messages d'état
+        if (d.sens === "envoye") {
+            if (
+                d.validation === "en_attente" &&
+                d.valideursIndisponibles.length
+            )
+                zone.appendChild(
+                    alerteDon(
+                        "warning",
+                        "Un administrateur exigé n'est plus actif : cet échange ne pourra pas être validé. Annulez-le puis renvoyez-le.",
+                    ),
+                );
+            if (d.validation === "refusee")
+                zone.appendChild(
+                    alerteDon(
+                        "danger",
+                        "Un administrateur a refusé cet échange : il n'a pas été transmis.",
+                    ),
+                );
+            if (d.validation === "expiree")
+                zone.appendChild(
+                    alerteDon(
+                        "danger",
+                        "Le délai de validation est dépassé : l'échange n'a pas été transmis.",
+                    ),
+                );
+        }
+        if (d.sens === "recu" && d.verification) {
+            zone.appendChild(
+                !d.verification.complet
+                    ? alerteDon(
+                          "danger",
+                          "Les approbations de l'État émetteur ne sont pas toutes valides : ne tenez pas compte de cet échange.",
+                      )
+                    : d.verification.exige === 0
+                      ? alerteDon(
+                            "success",
+                            "Envoi validé d'office par le seul administrateur de l'État émetteur.",
+                        )
+                      : alerteDon(
+                            "success",
+                            "Approbations vérifiées : " +
+                                d.verification.exige +
+                                " administrateur(s) de l'État émetteur ont signé.",
+                        ),
+            );
+        }
+
+        const actions = el("div", "d-flex flex-wrap gap-2");
+        let zoneRefus = null;
+
+        // 1) Décision de l'administrateur valideur
+        if (aValider(d)) {
+            if (d.signatureValide !== true) {
+                zone.appendChild(
+                    alerteDon(
+                        "danger",
+                        "La signature de l'expéditeur n'a pas pu être vérifiée : validation impossible.",
+                    ),
+                );
+            } else {
+                const bOk = boutonDon("Approuver", "btn-success", "fa-check");
+                const bKo = boutonDon(
+                    "Refuser…",
+                    "btn-outline-danger",
+                    "fa-ban",
+                );
+                zoneRefus = el("div", "w-100 mt-2 d-none");
+                const motif = el(
+                    "textarea",
+                    "form-control form-control-sm mb-2",
+                );
+                motif.rows = 3;
+                motif.maxLength = 1000;
+                motif.placeholder =
+                    "Motif du refus (obligatoire, chiffré : le serveur ne peut pas le lire)";
+                const bConf = boutonDon(
+                    "Confirmer le refus",
+                    "btn-danger",
+                    "fa-ban",
+                );
+                zoneRefus.append(motif, bConf);
+
+                bOk.addEventListener("click", function (ev) {
+                    if (
+                        !confirm(
+                            "Approuver l'envoi de cet échange à un autre État ?",
+                        )
+                    )
+                        return;
+                    agir(ev.currentTarget, async function () {
+                        const r = await E.donnees.decider(d, "approuve");
+                        if (r.erreurLiberation)
+                            toast(
+                                "Approbation enregistrée, mais la transmission a échoué (" +
+                                    r.erreurLiberation +
+                                    "). L'expéditeur ou un administrateur ayant approuvé peut la relancer.",
+                                "error",
+                            );
+                        else
+                            toast(
+                                r.libere
+                                    ? "Dernière approbation : échange transmis aux destinataires."
+                                    : "Approbation enregistrée. En attente des autres administrateurs.",
+                                "success",
+                            );
+                        await chargerDonnees(true);
+                    });
+                });
+                bKo.addEventListener("click", function () {
+                    zoneRefus.classList.toggle("d-none");
+                    motif.focus();
+                });
+                bConf.addEventListener("click", function (ev) {
+                    if (!motif.value.trim()) {
+                        toast("Indiquez le motif du refus.", "error");
+                        return;
+                    }
+                    if (!confirm("Refuser définitivement cet échange ?"))
+                        return;
+                    agir(ev.currentTarget, async function () {
+                        await E.donnees.decider(d, "refuse", motif.value);
+                        toast(
+                            "Échange refusé : il ne sera pas transmis.",
+                            "success",
+                        );
+                        await chargerDonnees(true);
+                    });
+                });
+                actions.append(bOk, bKo);
+            }
+        }
+
+        // 2) Relance de la transmission (navigateur fermé trop tôt, réseau coupé…)
+        if (
+            d.validation === "validee" &&
+            (d.sens === "envoye" || d.ma_validation === "approuve")
+        ) {
+            const bRel = boutonDon(
+                "Relancer la transmission",
+                "btn-outline-info",
+                "fa-rotate",
+            );
+            bRel.addEventListener("click", function (ev) {
+                agir(ev.currentTarget, async function () {
+                    await E.donnees.liberer(d);
+                    toast("Échange transmis aux destinataires.", "success");
+                    await chargerDonnees(true);
+                });
+            });
+            actions.appendChild(bRel);
+        }
+
+        // 3) Annulation par l'expéditeur
+        if (
+            d.sens === "envoye" &&
+            (d.validation === "en_attente" || d.validation === "validee")
+        ) {
+            const bAnn = boutonDon(
+                "Annuler l'envoi",
+                "btn-outline-secondary",
+                "fa-xmark",
+            );
+            bAnn.addEventListener("click", function (ev) {
+                if (
+                    !confirm(
+                        "Annuler cet échange ? Il ne sera jamais transmis à l'autre État.",
+                    )
+                )
+                    return;
+                agir(ev.currentTarget, async function () {
+                    await E.donnees.annuler(d);
+                    toast("Échange annulé.", "success");
+                    await chargerDonnees(true);
+                });
+            });
+            actions.appendChild(bAnn);
+        }
+
+        if (actions.children.length) zone.appendChild(actions);
+        if (zoneRefus) zone.appendChild(zoneRefus);
+    }
+
+    /** Aperçu avant envoi : qui reçoit tout de suite, qui doit valider. */
+    let apercuTour = 0;
+    async function majApercuEnvoi() {
+        const zone = $("#don-apercu-envoi");
+        if (!zone) return;
+        const jeton = ++apercuTour;
+        const ids = $$("#don-agents input:checked").map((i) => i.value);
+        zone.textContent = "";
+        if (!ids.length) return;
+
+        let plan;
+        try {
+            plan = await E.donnees.analyserEnvoi(ids, false);
+        } catch (e) {
+            if (jeton === apercuTour)
+                zone.appendChild(alerteDon("danger", e.message));
+            return;
+        }
+        if (jeton !== apercuTour) return; // une sélection plus récente a pris le relais
+
+        const noms = (liste) => liste.map((a) => a.nom).join(", ");
+        if (plan.erreur) {
+            zone.appendChild(alerteDon("danger", plan.erreur));
+        } else if (plan.libererDirect) {
+            zone.appendChild(
+                alerteDon(
+                    "info",
+                    "Vous êtes le seul administrateur de votre État : votre envoi vaut validation. " +
+                        noms(plan.externes) +
+                        " le recevra immédiatement.",
+                ),
+            );
+        } else if (plan.besoinValidation) {
+            zone.appendChild(
+                alerteDon(
+                    "warning",
+                    "Cet échange est destiné à un autre État (" +
+                        noms(plan.externes) +
+                        "). Il leur restera illisible jusqu'à l'approbation de tous les administrateurs de votre État : " +
+                        noms(plan.valideurs) +
+                        ". Délai : " +
+                        DELAI_VALIDATION_JOURS +
+                        " jours.",
+                ),
+            );
+        }
     }
 
     function rendreDetailDonnee(d) {
@@ -1302,7 +1801,7 @@
         meta.textContent = "";
         meta.appendChild(
             document.createTextNode(
-                (d.sens === "recu" ? "De : " : "Envoyé par vous · À : ") +
+                (d.sens === "envoye" ? "Envoyé par vous · À : " : "De : ") +
                     partieConcernee(d) +
                     (d.date
                         ? " · " + new Date(d.date).toLocaleString("fr-FR")
@@ -1350,6 +1849,9 @@
         }
 
         afficherPhotoDonnee(d);
+
+        // Validation interétatique (décisions, approbation, relance, annulation)
+        rendreValidation(d);
 
         // Actions du destinataire
         const actions = $("#don-detail-actions");
@@ -1444,13 +1946,24 @@
     async function chargerDonnees(forcer) {
         if (!E.trousseau.estOuvert()) return;
         try {
-            const liste = await E.donnees.lister();
+            let liste = await E.donnees.lister();
+
+            // Reprend en silence une transmission interrompue (expéditeur ou administrateur ayant approuvé)
+            if (await E.donnees.libererEnAttente(liste, essaisLiberation)) {
+                liste = await E.donnees.lister();
+                forcer = true;
+            }
+
             const empreinte = liste
                 .map(
                     (d) =>
                         d.id +
                         ":" +
                         d.statut +
+                        ":" +
+                        d.validation +
+                        ":" +
+                        (d.validations || []).map((v) => v.decision).join("") +
                         ":" +
                         (d.destinataires || []).map((x) => x.statut).join(""),
                 )
@@ -1525,6 +2038,8 @@
         $$("#don-agents input:checked").forEach((i) => {
             i.checked = false;
         });
+        const za = $("#don-apercu-envoi");
+        if (za) za.textContent = "";
     }
 
     function fermerFormulaireDon() {
@@ -1537,6 +2052,9 @@
         $("#don-detail").classList.add("d-none");
         $("#don-formulaire").classList.remove("d-none");
         rendreChampsDon();
+
+        const apercu = $("#don-apercu-envoi");
+        if (apercu) apercu.textContent = "";
 
         const zone = $("#don-agents");
         zone.textContent = "";
@@ -1620,8 +2138,36 @@
             sensDon = "envoye";
             rendreListeDonnees();
         });
+        const btnValider = $("#don-sens-valider");
+        if (btnValider)
+            btnValider.addEventListener("click", function () {
+                sensDon = "a_valider";
+                rendreListeDonnees();
+            });
         $("#don-filtre-type").addEventListener("change", rendreListeDonnees);
         $("#don-filtre-statut").addEventListener("change", rendreListeDonnees);
+
+        // Recherche : effectuée dans le navigateur sur les échanges déchiffrés (jamais envoyée au serveur)
+        const champRecherche = $("#don-q");
+        if (champRecherche) {
+            let delaiRecherche = null;
+            champRecherche.addEventListener("input", function () {
+                clearTimeout(delaiRecherche);
+                delaiRecherche = setTimeout(rendreListeDonnees, 200);
+            });
+            ["#don-f-priorite", "#don-f-niveau", "#don-f-du", "#don-f-au"].forEach(
+                function (sel) {
+                    const n = $(sel);
+                    if (n) n.addEventListener("change", rendreListeDonnees);
+                },
+            );
+            const raz = $("#don-q-raz");
+            if (raz)
+                raz.addEventListener("click", function () {
+                    reinitialiserRecherche();
+                    rendreListeDonnees();
+                });
+        }
 
         $("#btn-actualiser-don").addEventListener("click", function (ev) {
             agir(ev.currentTarget, () => chargerDonnees(true));
@@ -1661,6 +2207,9 @@
             );
         });
 
+        // L'aperçu (validation requise ou non) se met à jour à chaque (dé)sélection d'un destinataire
+        $("#don-agents").addEventListener("change", majApercuEnvoi);
+
         $("#btn-envoyer-don").addEventListener("click", function (ev) {
             agir(ev.currentTarget, async function () {
                 const valeurs = {};
@@ -1672,7 +2221,7 @@
                     throw new Error("Sélectionnez au moins un destinataire.");
 
                 const type = $("#don-type").value;
-                await E.donnees.envoyer(
+                const rep = await E.donnees.envoyer(
                     type,
                     parseInt($("#don-niveau").value, 10),
                     $("#don-priorite").value,
@@ -1681,7 +2230,12 @@
                     schemaDe(type).photo ? photoChoisie : null,
                 );
 
-                toast("Échange chiffré et envoyé.", "success");
+                toast(
+                    rep && rep.validation === "en_attente"
+                        ? "Échange chiffré et envoyé : en attente de validation par les administrateurs de votre État."
+                        : "Échange chiffré et envoyé.",
+                    "success",
+                );
                 fermerFormulaireDon();
                 sensDon = "envoye";
                 await chargerDonnees(true);
@@ -1703,6 +2257,10 @@
         "donnees.lu": "Données lues",
         "donnees.traite": "Données traitées",
         "donnees.rejete": "Données rejetées",
+        "donnees.validation_approuve": "Envoi validé",
+        "donnees.validation_refuse": "Envoi refusé",
+        "donnees.liberee": "Échange transmis à un autre État",
+        "donnees.annulee": "Échange annulé",
         "admin.agent.cree": "Agent créé",
         "admin.agent.modifie": "Agent modifié",
         "admin.cle.revoquee": "Clé révoquée",
@@ -2305,9 +2863,10 @@
                     donnees = [];
                     donneeCourante = null;
                     empreinteDon = "";
+                    reinitialiserRecherche(); // la saisie peut contenir un nom ou une plaque : on l'efface aussi
                     $("#table-donnees tbody").textContent = "";
-                    viderDetailDonnee(); // efface aussi la photo affichée
-                    viderFormulaireDon(); // efface aussi l'aperçu de la photo choisie
+                    viderDetailDonnee(); // efface aussi la photo affichée et le bloc de validation
+                    viderFormulaireDon(); // efface aussi l'aperçu de la photo choisie et celui de l'envoi
                     $("#don-champs").textContent = "";
                     $("#don-agents").textContent = "";
                     $("#don-formulaire").classList.add("d-none");

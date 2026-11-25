@@ -204,6 +204,10 @@
             .sed-toast.success { background: #0f9d58; }
             .sed-toast.error { background: #d93025; }
             .sed-toast.info { background: #1e88e5; }
+
+            .sed-statut.valideur, .sed-statut.attente {
+    background: rgba(255, 179, 0, .15); color: #ffb300; border: 1px solid rgba(255, 179, 0, .4);
+}
         </style>
     @endsection
 
@@ -263,14 +267,13 @@
         </script>
 
         {{-- Bibliothèques locales : aucun script tiers pour le chiffrement --}}
-        <script src="{{ asset('js/echange/sodium.js') }}"
+                <script src="{{ asset('js/echange/sodium.js') }}"
             onerror="sedErreur('Fichier introuvable : ' + this.getAttribute('src'))"></script>
         <script src="{{ asset('js/echange/echange.js') }}"
             onerror="sedErreur('Fichier introuvable : ' + this.getAttribute('src'))"></script>
         <script src="{{ asset('js/echange/app.js') }}"
             onerror="sedErreur('Fichier introuvable : ' + this.getAttribute('src'))"></script>
-        <script>
-            // Si, une fois la page chargée, l'interface n'a pas démarré, on le dit clairement
+            {{-- // Si, une fois la page chargée, l'interface n'a pas démarré, on le dit clairement --}}
             window.addEventListener('load', function() {
                 setTimeout(function() {
                     if (!window.__sedAppPret && !document.querySelector('#sed-erreur-js:not(.d-none)')) {

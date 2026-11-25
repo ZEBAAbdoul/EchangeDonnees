@@ -7,50 +7,16 @@ use App\Http\Controllers\Echange\DocumentController;
 use App\Http\Controllers\Echange\EchangeController;
 use App\Http\Controllers\Echange\EchangeDonneesController;
 use App\Http\Controllers\Echange\MessageController;
+use App\Http\Controllers\Echange\ValidationEchangeController;
 use Illuminate\Support\Facades\Route;
 
-
-
 /*
  | Module « Échanges sécurisés ».
  | À inclure depuis routes/web.php :   require __DIR__ . '/echange.php';
  | Ces routes sont dans le groupe "web" (session + CSRF), car les appels viennent de la page.
  | Ajoutez ici les middlewares de votre espace admin si besoin (ex. 'verified').
- |
- | L'ancienne version de ce fichier (documents, données structurées, audit...) est conservée
- | dans routes/echange.old.php en attendant d'être reprise.
  */
 
-Route::middleware('auth')->group(function () {
-
-    // Page
-    Route::get('/admin/echange', EchangeController::class)->name('admin.echange');
-
-    // API utilisée par la page
-    Route::prefix('echange/api')->name('echange.api.')->middleware('throttle:60,1')->group(function () {
-
-        // Agent connecté, annuaire et clés publiques
-        Route::get('moi', [AgentController::class, 'moi'])->name('moi');
-        Route::get('agents', [AgentController::class, 'annuaire'])->name('agents');
-        Route::post('cles', [AgentController::class, 'enregistrerCle'])->name('cles.store');
-
-        // Messages
-        Route::get('conversations', [ConversationController::class, 'index'])->name('conversations.index');
-        Route::post('conversations', [ConversationController::class, 'store'])->name('conversations.store');
-        Route::get('conversations/{conversation}/messages', [MessageController::class, 'index'])->name('messages.index');
-        Route::post('conversations/{conversation}/messages', [MessageController::class, 'store'])->name('messages.store');
-    });
-});
-
-/*
- | Module « Échanges sécurisés ».
- | À inclure depuis routes/web.php :   require __DIR__ . '/echange.php';
- | Ces routes sont dans le groupe "web" (session + CSRF), car les appels viennent de la page.
- | Ajoutez ici les middlewares de votre espace admin si besoin (ex. 'verified').
- |
- | L'ancienne version de ce fichier (documents, données structurées, audit...) est conservée
- | dans routes/echange.old.php en attendant d'être reprise.
- */
 Route::middleware('auth')->group(function () {
 
     // Page
@@ -75,18 +41,16 @@ Route::middleware('auth')->group(function () {
         Route::post('documents', [DocumentController::class, 'store'])->name('documents.store');
         Route::get('documents/{document}/fichier', [DocumentController::class, 'download'])->name('documents.download');
 
-        //   // Données structurées
-        // Route::get('donnees', [EchangeDonneesController::class, 'index'])->name('donnees.index');
-        // Route::post('donnees', [EchangeDonneesController::class, 'store'])->name('donnees.store');
-        // Route::post('donnees/{echange}/statut', [EchangeDonneesController::class, 'statut'])->name('donnees.statut');
-
-
         // Données structurées
         Route::get('donnees', [EchangeDonneesController::class, 'index'])->name('donnees.index');
         Route::post('donnees', [EchangeDonneesController::class, 'store'])->name('donnees.store');
         Route::get('donnees/{echange}/photo', [EchangeDonneesController::class, 'photo'])->name('donnees.photo');
         Route::post('donnees/{echange}/statut', [EchangeDonneesController::class, 'statut'])->name('donnees.statut');
 
+        // Validation des envois vers un autre État (décision signée, transmission des clés, annulation)
+        Route::post('donnees/{id}/validation', [ValidationEchangeController::class, 'decider'])->name('donnees.validation');
+        Route::post('donnees/{id}/liberer', [ValidationEchangeController::class, 'liberer'])->name('donnees.liberer');
+        Route::post('donnees/{id}/annuler', [ValidationEchangeController::class, 'annuler'])->name('donnees.annuler');
 
         // Administration (réservée aux agents administrateurs : contrôle dans le contrôleur)
         Route::prefix('admin')->name('admin.')->group(function () {

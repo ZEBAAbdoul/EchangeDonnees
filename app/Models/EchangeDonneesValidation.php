@@ -6,17 +6,33 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * Décision (approbation ou refus) d'un administrateur de l'État émetteur, signée avec sa clé.
+ */
 class EchangeDonneesValidation extends Model
 {
     use HasUuids;
 
     protected $table = 'echanges_donnees_validations';
 
+    public const DECISIONS = ['en_attente', 'approuve', 'refuse'];
+
     protected $fillable = [
-        'echange_id', 'valideur_id', 'decision', 'signature', 'motif_chiffre', 'motif_nonce', 'decide_le',
+        'echange_id',
+        'valideur_id',
+        'decision',
+        'signature',
+        'motif_chiffre',
+        'motif_nonce',
+        'decide_le',
     ];
 
-    protected $casts = ['decide_le' => 'datetime'];
+    protected function casts(): array
+    {
+        return [
+            'decide_le' => 'datetime',
+        ];
+    }
 
     public function echange(): BelongsTo
     {

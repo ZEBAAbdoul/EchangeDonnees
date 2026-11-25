@@ -33,7 +33,7 @@ class UserSeeder extends Seeder
             nom: 'ZEBA',
             email: 'zeba@gmail.com',
             pieceNumero: 'B00000001',
-            role: 'super-admin',
+            role: 'admin',
             pays: 'Burkina Faso',
             indicatif: '+226',
             codePays: 'BF',
