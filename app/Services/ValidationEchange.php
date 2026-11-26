@@ -113,15 +113,27 @@ class ValidationEchange
     }
 
     /** Texte signé par un administrateur (identique à aSignerValidation du client). */
-    public static function messageDecision(
-        string $echangeId,
-        string $decision,
-        string $signatureExpediteur,
-        ?string $motifNonce,
-        ?string $motifChiffre
-    ): string {
-        return implode('|', ['valid', $echangeId, $decision, $signatureExpediteur, $motifNonce ?? '', $motifChiffre ?? '']);
-    }
+    // public static function messageDecision(
+    //     string $echangeId,
+    //     string $decision,
+    //     string $signatureExpediteur,
+    //     ?string $motifNonce,
+    //     ?string $motifChiffre
+    // ): string {
+    //     return implode('|', ['valid', $echangeId, $decision, $signatureExpediteur, $motifNonce ?? '', $motifChiffre ?? '']);
+    // }
+
+    /** Texte signé par un administrateur (identique à aSignerValidation / aSignerValidationDoc du client). */
+public static function messageDecision(
+    string $echangeId,
+    string $decision,
+    string $signatureExpediteur,
+    ?string $motifNonce,
+    ?string $motifChiffre,
+    string $domaine = 'valid'      // 'valid' pour les données, 'validdoc' pour les documents
+): string {
+    return implode('|', [$domaine, $echangeId, $decision, $signatureExpediteur, $motifNonce ?? '', $motifChiffre ?? '']);
+}
 
     public static function signatureValide(?string $signature, string $message, ?string $clePublique): bool
     {

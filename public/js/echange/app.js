@@ -58,6 +58,8 @@
         try {
             return await fn();
         } catch (e) {
+            console.error(e);
+
             toast(e.message || "Erreur inattendue.", "error");
             console.error(e);
         } finally {
@@ -735,6 +737,83 @@
         return n || "document";
     }
 
+    let documents = []; // liste déchiffrée, filtrée à l'affichage
+
+    function filtresDocuments() {
+        const val = (sel) => {
+            const n = $(sel);
+            return n ? n.value : "";
+        };
+        return {
+            termes: normaliser(val("#doc-q")).split(/\s+/).filter(Boolean),
+            sens: val("#doc-f-sens"),
+            niveau: val("#doc-f-niveau"),
+            du: val("#doc-f-du"),
+            au: val("#doc-f-au"),
+        };
+    }
+
+    const rechercheDocActive = (f) =>
+        f.termes.length > 0 || !!(f.sens || f.niveau || f.du || f.au);
+
+    /** Texte consultable d'un document (calculé une fois par objet). */
+    function indexDoc(d) {
+        if (d._index !== undefined) return d._index;
+        d._index = [
+            d.nom,
+            d.type,
+            d.expediteur && d.expediteur.nom,
+            ...(d.destinataires || []).map((x) => x.agent && x.agent.nom),
+        ]
+            .filter(Boolean)
+            .map(normaliser)
+            .join(" ");
+        return d._index;
+    }
+
+    function correspondDoc(d, f) {
+        if (f.sens && d.sens !== f.sens) return false;
+        if (f.niveau && String(d.niveau) !== f.niveau) return false;
+        if (f.du || f.au) {
+            const t = d.date ? new Date(d.date).getTime() : NaN;
+            if (isNaN(t)) return false;
+            if (f.du && t < new Date(f.du + "T00:00:00").getTime())
+                return false;
+            if (f.au && t > new Date(f.au + "T23:59:59.999").getTime())
+                return false;
+        }
+        if (!f.termes.length) return true;
+        const texte = indexDoc(d);
+        return f.termes.every((t) => texte.indexOf(t) !== -1);
+    }
+
+    function rendreListeDocuments() {
+        const f = filtresDocuments();
+        const actif = rechercheDocActive(f);
+        const lignes = documents.filter((d) => correspondDoc(d, f));
+        const compteur = $("#doc-q-compteur");
+        if (compteur)
+            compteur.textContent = actif
+                ? lignes.length + " résultat(s) sur " + documents.length
+                : "";
+        rendreDocuments(lignes, actif);
+    }
+
+    function reinitialiserRechercheDocs() {
+        [
+            "#doc-q",
+            "#doc-f-sens",
+            "#doc-f-niveau",
+            "#doc-f-du",
+            "#doc-f-au",
+        ].forEach(function (sel) {
+            const n = $(sel);
+            if (n) n.value = "";
+        });
+        const c = $("#doc-q-compteur");
+        if (c) c.textContent = "";
+    }
+
     function rendreDocuments(docs) {
         const tbody = $("#table-documents tbody");
         tbody.textContent = "";
@@ -753,7 +832,9 @@
         }
 
         docs.forEach(function (d) {
-            const tr = el("tr");
+            // Approbations de l'État émetteur incomplètes ou invalides : le téléchargement est bloqué
+            const incomplet = !!(d.verification && !d.verification.complet);
+            const tr = el("tr", aValider(d) ? "sed-non-lu" : "");
 
             const tdNom = el("td");
             if (d.erreur) {
@@ -763,6 +844,11 @@
             } else {
                 tdNom.appendChild(el("i", "fas fa-file-lines me-2 text-info"));
                 tdNom.appendChild(el("strong", "", d.nom));
+            }
+            // Le badge de validation ne concerne que l'expéditeur et les administrateurs valideurs
+            if (d.sens !== "recu" && d.validation !== "non_requise") {
+                const bval = badgeValidation(d);
+                if (bval) tdNom.appendChild(bval);
             }
             tr.appendChild(tdNom);
 
@@ -809,7 +895,11 @@
             btn.type = "button";
             btn.appendChild(el("i", "fas fa-download me-1"));
             btn.appendChild(document.createTextNode("Télécharger"));
-            btn.disabled = !!d.erreur || d.signatureValide === false;
+            btn.disabled =
+                !!d.erreur || d.signatureValide === false || incomplet;
+            if (incomplet)
+                btn.title =
+                    "Approbations de l'État émetteur incomplètes ou invalides";
             btn.addEventListener("click", function (ev) {
                 agir(ev.currentTarget, async function () {
                     const r = await E.documents.ouvrir(d);
@@ -829,14 +919,80 @@
             tr.appendChild(tdAct);
 
             tbody.appendChild(tr);
+
+            // Ligne de validation interétatique (décisions signées, approbation / refus, relance, annulation)
+            if (
+                d.validation !== "non_requise" &&
+                (d.sens !== "recu" || incomplet)
+            ) {
+                const zone = el("div", "sed-validation border rounded p-2");
+                rendreValidation(d, zone, OPS_DOCUMENTS);
+                if (!zone.classList.contains("d-none")) {
+                    const trV = el("tr");
+                    const tdV = el("td");
+                    tdV.colSpan = 7;
+                    tdV.appendChild(zone);
+                    trV.appendChild(tdV);
+                    tbody.appendChild(trV);
+                }
+            }
         });
     }
+
+    const essaisLiberationDoc = new Set(); // documents dont la transmission a déjà été tentée dans cette session
+
+    // async function chargerDocuments() {
+    //     if (!E.trousseau.estOuvert()) return;
+    //     try {
+    //         let liste = await E.documents.lister();
+    //         // Reprend en silence une transmission interrompue (expéditeur ou administrateur ayant approuvé)
+    //         if (
+    //             E.documents.libererEnAttente &&
+    //             (await E.documents.libererEnAttente(liste, essaisLiberationDoc))
+    //         ) {
+    //             liste = await E.documents.lister();
+    //         }
+    //         rendreDocuments(liste);
+    //         majBadgeDocuments().catch(function () {});
+    //     } catch (e) {
+    //         toast(
+    //             "Impossible de charger les documents : " + e.message,
+    //             "error",
+    //         );
+    //     }
+    // }
 
     async function chargerDocuments() {
         if (!E.trousseau.estOuvert()) return;
         try {
-            rendreDocuments(await E.documents.lister());
+            let liste = await E.documents.lister();
+            if (
+                E.documents.libererEnAttente &&
+                (await E.documents.libererEnAttente(liste, essaisLiberationDoc))
+            ) {
+                liste = await E.documents.lister();
+            }
+            // Normalisation : aucun champ de liste ne peut être absent au rendu
+            liste = liste.map(function (d) {
+                d.validations = d.validations || [];
+                d.destinataires = d.destinataires || [];
+                d.valideursIndisponibles = d.valideursIndisponibles || [];
+                d.valideursExiges = d.valideursExiges || [];
+                return d;
+            });
+            documents = liste;
+            rendreListeDocuments();
+            majBadgeDocuments().catch(function () {});
         } catch (e) {
+            console.error(e);
+            // Affiche la trace dans le bandeau rouge de la page
+            if (window.sedErreur)
+                window.sedErreur(
+                    "chargerDocuments : " +
+                        e.message +
+                        " | " +
+                        String(e.stack).split("\n").slice(0, 4).join(" ← "),
+                );
             toast(
                 "Impossible de charger les documents : " + e.message,
                 "error",
@@ -930,6 +1086,33 @@
             agir(ev.currentTarget, ouvrirDocuments);
         });
 
+        // Recherche dans les documents (effectuée dans le navigateur)
+        const champDocQ = $("#doc-q");
+        if (champDocQ) {
+            let delaiDoc = null;
+            champDocQ.addEventListener("input", function () {
+                clearTimeout(delaiDoc);
+                delaiDoc = setTimeout(rendreListeDocuments, 200);
+            });
+            ["#doc-f-sens", "#doc-f-niveau", "#doc-f-du", "#doc-f-au"].forEach(
+                function (sel) {
+                    const n = $(sel);
+                    if (n) n.addEventListener("change", rendreListeDocuments);
+                },
+            );
+            const razDoc = $("#doc-q-raz");
+            if (razDoc)
+                razDoc.addEventListener("click", function () {
+                    reinitialiserRechercheDocs();
+                    rendreListeDocuments();
+                });
+        }
+
+        // L'aperçu (validation requise ou non) se met à jour à chaque (dé)sélection d'un destinataire
+        $("#doc-agents").addEventListener("change", () =>
+            majApercuEnvoi("#doc-apercu-envoi", "#doc-agents"),
+        );
+
         $("#btn-deposer").addEventListener("click", function (ev) {
             agir(ev.currentTarget, async function () {
                 const fichier = $("#doc-fichier").files[0];
@@ -940,8 +1123,9 @@
 
                 $("#doc-etat").textContent = "Chiffrement et envoi en cours…";
                 await new Promise((r) => setTimeout(r, 30)); // laisse le message s'afficher avant le calcul
+                let rep;
                 try {
-                    await E.documents.deposer(
+                    rep = await E.documents.deposer(
                         fichier,
                         parseInt($("#doc-niveau").value, 10),
                         ids,
@@ -954,7 +1138,14 @@
                 $$("#doc-agents input:checked").forEach((i) => {
                     i.checked = false;
                 });
-                toast("Document chiffré et envoyé.", "success");
+                const zoneApercu = $("#doc-apercu-envoi");
+                if (zoneApercu) zoneApercu.textContent = "";
+                toast(
+                    rep && rep.validation === "en_attente"
+                        ? "Document chiffré et envoyé : en attente de validation par les administrateurs de votre État."
+                        : "Document chiffré et envoyé.",
+                    "success",
+                );
                 await chargerDocuments();
             });
         });
@@ -1063,13 +1254,17 @@
         const sc = schemaDe(d.type);
         const items = [];
         const ajouter = function (libelle, valeur) {
-            if (valeur === null || valeur === undefined || valeur === "") return;
+            if (valeur === null || valeur === undefined || valeur === "")
+                return;
             items.push({ libelle: libelle, texte: normaliser(valeur) });
         };
         ajouter("Type", sc.libelle);
         if (!d.erreur && d.champs) {
             sc.champs.forEach((c) =>
-                ajouter(c.cle === "objet" ? "Objet" : c.libelle, d.champs[c.cle]),
+                ajouter(
+                    c.cle === "objet" ? "Objet" : c.libelle,
+                    d.champs[c.cle],
+                ),
             );
         }
         ajouter("Expéditeur", d.expediteur && d.expediteur.nom);
@@ -1109,7 +1304,8 @@
             const t = d.date ? new Date(d.date).getTime() : NaN;
             if (isNaN(t)) return null;
             if (f.du && t < new Date(f.du + "T00:00:00").getTime()) return null;
-            if (f.au && t > new Date(f.au + "T23:59:59.999").getTime()) return null;
+            if (f.au && t > new Date(f.au + "T23:59:59.999").getTime())
+                return null;
         }
         if (!f.termes.length) return [];
 
@@ -1126,12 +1322,16 @@
     }
 
     function reinitialiserRecherche() {
-        ["#don-q", "#don-f-priorite", "#don-f-niveau", "#don-f-du", "#don-f-au"].forEach(
-            function (sel) {
-                const n = $(sel);
-                if (n) n.value = "";
-            },
-        );
+        [
+            "#don-q",
+            "#don-f-priorite",
+            "#don-f-niveau",
+            "#don-f-du",
+            "#don-f-au",
+        ].forEach(function (sel) {
+            const n = $(sel);
+            if (n) n.value = "";
+        });
         const c = $("#don-q-compteur");
         if (c) c.textContent = "";
     }
@@ -1164,6 +1364,27 @@
                     aValider(d),
             ).length,
         );
+    }
+
+    /** Affiche (ou retire) la pastille rouge du menu Documents (documents en attente de ma validation). */
+    function appliquerBadgeDocuments(n) {
+        const lien = $('#echange-nav a[href="#/documents"]');
+        if (!lien) return;
+        let badge = $(".sed-badge-doc", lien);
+        if (n && !badge) {
+            lien.appendChild(
+                el("span", "badge bg-danger ms-1 sed-badge-doc", String(n)),
+            );
+        } else if (badge) {
+            if (n) badge.textContent = String(n);
+            else badge.remove();
+        }
+    }
+
+    /** Documents à valider : fonctionne même trousseau fermé (l'état de validation n'est pas chiffré). */
+    async function majBadgeDocuments() {
+        const brut = await E.api.documents();
+        appliquerBadgeDocuments(brut.filter(aValider).length);
     }
 
     function rendreListeDonnees() {
@@ -1468,8 +1689,30 @@
     }
 
     /** Bloc « Validation interétatique » : décisions signées, approbation/refus, relance, annulation. */
-    function rendreValidation(d) {
-        const zone = $("#don-detail-validation");
+    /** Opérations de validation, selon qu'il s'agit d'un échange de données ou d'un document. */
+    const OPS_DONNEES = {
+        ce: "cet échange",
+        le: "l'échange",
+        Nom: "Échange",
+        decider: (d, decision, motif) => E.donnees.decider(d, decision, motif),
+        liberer: (d) => E.donnees.liberer(d),
+        annuler: (d) => E.donnees.annuler(d),
+        rafraichir: () => chargerDonnees(true),
+    };
+    const OPS_DOCUMENTS = {
+        ce: "ce document",
+        le: "le document",
+        Nom: "Document",
+        decider: (d, decision, motif) =>
+            E.documents.decider(d, decision, motif),
+        liberer: (d) => E.documents.liberer(d),
+        annuler: (d) => E.documents.annuler(d),
+        rafraichir: () => chargerDocuments(),
+    };
+
+    function rendreValidation(d, zoneCible, ops) {
+        ops = ops || OPS_DONNEES;
+        const zone = zoneCible || $("#don-detail-validation");
         if (!zone) return;
         zone.textContent = "";
         if (d.erreur || d.validation === "non_requise") {
@@ -1544,21 +1787,27 @@
                 zone.appendChild(
                     alerteDon(
                         "warning",
-                        "Un administrateur exigé n'est plus actif : cet échange ne pourra pas être validé. Annulez-le puis renvoyez-le.",
+                        "Un administrateur exigé n'est plus actif : " +
+                            ops.ce +
+                            " ne pourra pas être validé. Annulez-le puis renvoyez-le.",
                     ),
                 );
             if (d.validation === "refusee")
                 zone.appendChild(
                     alerteDon(
                         "danger",
-                        "Un administrateur a refusé cet échange : il n'a pas été transmis.",
+                        "Un administrateur a refusé " +
+                            ops.ce +
+                            " : il n'a pas été transmis.",
                     ),
                 );
             if (d.validation === "expiree")
                 zone.appendChild(
                     alerteDon(
                         "danger",
-                        "Le délai de validation est dépassé : l'échange n'a pas été transmis.",
+                        "Le délai de validation est dépassé : " +
+                            ops.le +
+                            " n'a pas été transmis.",
                     ),
                 );
         }
@@ -1567,7 +1816,9 @@
                 !d.verification.complet
                     ? alerteDon(
                           "danger",
-                          "Les approbations de l'État émetteur ne sont pas toutes valides : ne tenez pas compte de cet échange.",
+                          "Les approbations de l'État émetteur ne sont pas toutes valides : ne tenez pas compte de " +
+                              ops.ce +
+                              ".",
                       )
                     : d.verification.exige === 0
                       ? alerteDon(
@@ -1621,12 +1872,14 @@
                 bOk.addEventListener("click", function (ev) {
                     if (
                         !confirm(
-                            "Approuver l'envoi de cet échange à un autre État ?",
+                            "Approuver l'envoi de " +
+                                ops.ce +
+                                " à un autre État ?",
                         )
                     )
                         return;
                     agir(ev.currentTarget, async function () {
-                        const r = await E.donnees.decider(d, "approuve");
+                        const r = await ops.decider(d, "approuve");
                         if (r.erreurLiberation)
                             toast(
                                 "Approbation enregistrée, mais la transmission a échoué (" +
@@ -1637,11 +1890,13 @@
                         else
                             toast(
                                 r.libere
-                                    ? "Dernière approbation : échange transmis aux destinataires."
+                                    ? "Dernière approbation : " +
+                                          ops.le +
+                                          " a été transmis aux destinataires."
                                     : "Approbation enregistrée. En attente des autres administrateurs.",
                                 "success",
                             );
-                        await chargerDonnees(true);
+                        await ops.rafraichir();
                     });
                 });
                 bKo.addEventListener("click", function () {
@@ -1653,15 +1908,15 @@
                         toast("Indiquez le motif du refus.", "error");
                         return;
                     }
-                    if (!confirm("Refuser définitivement cet échange ?"))
+                    if (!confirm("Refuser définitivement " + ops.ce + " ?"))
                         return;
                     agir(ev.currentTarget, async function () {
-                        await E.donnees.decider(d, "refuse", motif.value);
+                        await ops.decider(d, "refuse", motif.value);
                         toast(
-                            "Échange refusé : il ne sera pas transmis.",
+                            ops.Nom + " refusé : il ne sera pas transmis.",
                             "success",
                         );
-                        await chargerDonnees(true);
+                        await ops.rafraichir();
                     });
                 });
                 actions.append(bOk, bKo);
@@ -1680,9 +1935,9 @@
             );
             bRel.addEventListener("click", function (ev) {
                 agir(ev.currentTarget, async function () {
-                    await E.donnees.liberer(d);
-                    toast("Échange transmis aux destinataires.", "success");
-                    await chargerDonnees(true);
+                    await ops.liberer(d);
+                    toast(ops.Nom + " transmis aux destinataires.", "success");
+                    await ops.rafraichir();
                 });
             });
             actions.appendChild(bRel);
@@ -1701,14 +1956,16 @@
             bAnn.addEventListener("click", function (ev) {
                 if (
                     !confirm(
-                        "Annuler cet échange ? Il ne sera jamais transmis à l'autre État.",
+                        "Annuler " +
+                            ops.ce +
+                            " ? Il ne sera jamais transmis à l'autre État.",
                     )
                 )
                     return;
                 agir(ev.currentTarget, async function () {
-                    await E.donnees.annuler(d);
-                    toast("Échange annulé.", "success");
-                    await chargerDonnees(true);
+                    await ops.annuler(d);
+                    toast(ops.Nom + " annulé.", "success");
+                    await ops.rafraichir();
                 });
             });
             actions.appendChild(bAnn);
@@ -1720,11 +1977,16 @@
 
     /** Aperçu avant envoi : qui reçoit tout de suite, qui doit valider. */
     let apercuTour = 0;
-    async function majApercuEnvoi() {
-        const zone = $("#don-apercu-envoi");
+    async function majApercuEnvoi(zoneSel, agentsSel) {
+        const zone = $(
+            typeof zoneSel === "string" ? zoneSel : "#don-apercu-envoi",
+        );
         if (!zone) return;
         const jeton = ++apercuTour;
-        const ids = $$("#don-agents input:checked").map((i) => i.value);
+        const ids = $$(
+            (typeof agentsSel === "string" ? agentsSel : "#don-agents") +
+                " input:checked",
+        ).map((i) => i.value);
         zone.textContent = "";
         if (!ids.length) return;
 
@@ -1754,7 +2016,7 @@
             zone.appendChild(
                 alerteDon(
                     "warning",
-                    "Cet échange est destiné à un autre État (" +
+                    "Cet envoi est destiné à un autre État (" +
                         noms(plan.externes) +
                         "). Il leur restera illisible jusqu'à l'approbation de tous les administrateurs de votre État : " +
                         noms(plan.valideurs) +
@@ -2155,12 +2417,15 @@
                 clearTimeout(delaiRecherche);
                 delaiRecherche = setTimeout(rendreListeDonnees, 200);
             });
-            ["#don-f-priorite", "#don-f-niveau", "#don-f-du", "#don-f-au"].forEach(
-                function (sel) {
-                    const n = $(sel);
-                    if (n) n.addEventListener("change", rendreListeDonnees);
-                },
-            );
+            [
+                "#don-f-priorite",
+                "#don-f-niveau",
+                "#don-f-du",
+                "#don-f-au",
+            ].forEach(function (sel) {
+                const n = $(sel);
+                if (n) n.addEventListener("change", rendreListeDonnees);
+            });
             const raz = $("#don-q-raz");
             if (raz)
                 raz.addEventListener("click", function () {
@@ -2208,7 +2473,7 @@
         });
 
         // L'aperçu (validation requise ou non) se met à jour à chaque (dé)sélection d'un destinataire
-        $("#don-agents").addEventListener("change", majApercuEnvoi);
+        $("#don-agents").addEventListener("change", () => majApercuEnvoi());
 
         $("#btn-envoyer-don").addEventListener("click", function (ev) {
             agir(ev.currentTarget, async function () {
@@ -2253,6 +2518,10 @@
         "message.envoye": "Message envoyé",
         "document.depose": "Document déposé",
         "document.telecharge": "Document téléchargé",
+        "document.validation_approuve": "Envoi de document validé",
+        "document.validation_refuse": "Envoi de document refusé",
+        "document.liberee": "Document transmis à un autre État",
+        "document.annulee": "Document annulé",
         "donnees.envoyees": "Données envoyées",
         "donnees.lu": "Données lues",
         "donnees.traite": "Données traitées",
@@ -2834,6 +3103,7 @@
                 chargerDonnees(false).catch(function () {});
             }
             majBadgeDonnees().catch(function () {});
+            majBadgeDocuments().catch(function () {});
         }, 15000);
     }
 
@@ -2856,8 +3126,12 @@
                 dernierIdAffiche = null;
                 $("#msg-texte").value = "";
                 if (vueDocumentsPrete()) {
+                    documents = [];
+                    reinitialiserRechercheDocs();
                     $("#table-documents tbody").textContent = "";
                     $("#doc-agents").textContent = "";
+                    const apercuDoc = $("#doc-apercu-envoi");
+                    if (apercuDoc) apercuDoc.textContent = "";
                 }
                 if (vueDonneesPrete()) {
                     donnees = [];
@@ -2893,6 +3167,7 @@
 
         await chargerConversations();
         majBadgeDonnees().catch(function () {});
+        majBadgeDocuments().catch(function () {});
         demarrerSync();
     }
 

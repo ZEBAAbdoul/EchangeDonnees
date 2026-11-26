@@ -42,8 +42,12 @@
                     <div id="doc-agents" class="sed-nc-agents mb-3"></div>
                     <div class="small text-muted mb-3">
                         Vous recevez toujours une copie. Seuls les agents dont l'habilitation couvre la
-                        classification choisie peuvent recevoir le document.
+                        classification choisie peuvent recevoir le document. Un envoi vers un autre État
+                        doit d'abord être approuvé par les administrateurs de votre État.
                     </div>
+
+                    {{-- Aperçu : qui reçoit tout de suite, qui doit valider --}}
+                    <div id="doc-apercu-envoi" class="mb-3" aria-live="polite"></div>
 
                     <button type="button" id="btn-deposer" class="btn btn-primary w-100">
                         <i class="fas fa-lock me-1"></i> Chiffrer et envoyer
@@ -64,6 +68,42 @@
                     </button>
                 </div>
                 <div class="card-body">
+                    <div class="row g-2 mb-3">
+    <div class="col-12">
+        <input type="search" id="doc-q" class="form-control form-control-sm"
+            placeholder="Rechercher un document (nom, type, expéditeur, destinataire)…"
+            autocomplete="off">
+    </div>
+    <div class="col-6 col-md-3">
+        <select id="doc-f-sens" class="form-select form-select-sm" title="Sens">
+            <option value="">Tous</option>
+            <option value="recu">Reçus</option>
+            <option value="envoye">Envoyés</option>
+            <option value="a_valider">À valider</option>
+        </select>
+    </div>
+    <div class="col-6 col-md-3">
+        <select id="doc-f-niveau" class="form-select form-select-sm" title="Classification">
+            <option value="">Toutes classifications</option>
+            <option value="1">Public</option>
+            <option value="2">Restreint</option>
+            <option value="3">Confidentiel</option>
+            <option value="4">Secret</option>
+        </select>
+    </div>
+    <div class="col-6 col-md-2">
+        <input type="date" id="doc-f-du" class="form-control form-control-sm" title="Du">
+    </div>
+    <div class="col-6 col-md-2">
+        <input type="date" id="doc-f-au" class="form-control form-control-sm" title="Au">
+    </div>
+    <div class="col-12 col-md-2 d-flex align-items-center gap-2">
+        <button type="button" id="doc-q-raz" class="btn btn-sm btn-outline-secondary" title="Effacer la recherche">
+            <i class="fas fa-xmark"></i>
+        </button>
+        <span id="doc-q-compteur" class="small text-info"></span>
+    </div>
+</div>
                     <div class="table-responsive">
                         <table id="table-documents" class="table table-hover align-middle mb-0">
                             <thead>

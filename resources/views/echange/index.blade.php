@@ -271,6 +271,8 @@
             onerror="sedErreur('Fichier introuvable : ' + this.getAttribute('src'))"></script>
         <script src="{{ asset('js/echange/echange.js') }}"
             onerror="sedErreur('Fichier introuvable : ' + this.getAttribute('src'))"></script>
+            <script src="{{ asset('js/echange/echange-documents.js') }}"></script>
+
         <script src="{{ asset('js/echange/app.js') }}"
             onerror="sedErreur('Fichier introuvable : ' + this.getAttribute('src'))"></script>
             {{-- // Si, une fois la page chargée, l'interface n'a pas démarré, on le dit clairement --}}

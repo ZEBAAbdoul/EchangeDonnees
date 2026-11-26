@@ -7,6 +7,7 @@ use App\Http\Controllers\Echange\DocumentController;
 use App\Http\Controllers\Echange\EchangeController;
 use App\Http\Controllers\Echange\EchangeDonneesController;
 use App\Http\Controllers\Echange\MessageController;
+use App\Http\Controllers\Echange\ValidationDocumentController;
 use App\Http\Controllers\Echange\ValidationEchangeController;
 use Illuminate\Support\Facades\Route;
 
@@ -40,6 +41,11 @@ Route::middleware('auth')->group(function () {
         Route::get('documents', [DocumentController::class, 'index'])->name('documents.index');
         Route::post('documents', [DocumentController::class, 'store'])->name('documents.store');
         Route::get('documents/{document}/fichier', [DocumentController::class, 'download'])->name('documents.download');
+
+         // Validation des documents destinés à un autre État (décision signée, transmission de la clé, annulation)
+        Route::post('documents/{id}/validation', [ValidationDocumentController::class, 'decider'])->name('documents.validation');
+        Route::post('documents/{id}/liberer', [ValidationDocumentController::class, 'liberer'])->name('documents.liberer');
+        Route::post('documents/{id}/annuler', [ValidationDocumentController::class, 'annuler'])->name('documents.annuler');
 
         // Données structurées
         Route::get('donnees', [EchangeDonneesController::class, 'index'])->name('donnees.index');
